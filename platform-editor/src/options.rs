@@ -1,5 +1,3 @@
-use std::default;
-
 /// Options in the game.
 #[derive(Debug)]
 pub struct Options {}

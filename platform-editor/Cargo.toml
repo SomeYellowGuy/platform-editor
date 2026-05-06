@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-sdl3 = "0.18.3"
+sdl3 = { version = "0.18.3", features = ["image", "build-from-source"] }
 sdl3-sys = "0.6.5+SDL-3.4.8"
