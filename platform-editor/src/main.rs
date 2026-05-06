@@ -4,22 +4,27 @@ use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
 use sdl3::pixels::Color;
-use sdl3::rect::{Point, Rect};
+use sdl3::rect::Rect;
 use sdl3::render::Canvas;
 use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
-use crate::render::{DrawResult, Render, RenderData};
+use crate::component::Component;
+use crate::component::title::TitleBase;
+use crate::render::{Background, ComponentMap, DrawResult, Render, RenderData};
 use crate::{
     images::Images,
     options::{Options, PresentMode},
 };
 
+pub mod component;
 pub mod images;
 pub mod options;
 pub mod render;
 
+/// The target width of the window.
 pub const WIDTH: u32 = 1280;
+/// The target height of the window.
 pub const HEIGHT: u32 = 720;
 
 pub fn main() {
@@ -103,6 +108,10 @@ impl App {
     }
 
     pub fn run(&mut self, mut images: Images) {
+        let mut components = ComponentMap::new();
+
+        components.insert("title", Component::Title(TitleBase), 0);
+
         self.update_with_present_mode();
         'running: loop {
             match self.present_mode {
@@ -111,7 +120,7 @@ impl App {
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
                     let start: Instant = Instant::now();
 
-                    if self.game_loop(&mut images) {
+                    if self.game_loop(&mut images, &mut components) {
                         break 'running;
                     }
 
@@ -124,7 +133,7 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(&mut images) {
+                    if self.game_loop(&mut images, &mut components) {
                         break 'running;
                     }
                 }
@@ -135,8 +144,8 @@ impl App {
     /// Runs the game loop once.
     ///
     /// Returns `true` if the game should be stopped.
-    fn game_loop(&mut self, images: &mut Images) -> bool {
-        if let Some(e) = self.render(images).err() {
+    fn game_loop(&mut self, images: &mut Images, components: &mut ComponentMap) -> bool {
+        if let Some(e) = self.render(images, components).err() {
             println!("Error occured diring rendering: {e}");
         }
 
@@ -159,56 +168,20 @@ impl App {
         false
     }
 
-    fn render(&mut self, images: &mut Images) -> DrawResult {
+    fn render(&mut self, images: &mut Images, components: &mut ComponentMap) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
         self.canvas.clear();
 
         self.canvas.set_draw_color(Color::RGB(60, 60, 60));
         self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        // Draw the background.
-        Background.render(RenderData::new(self, images))?;
+        let mut data = RenderData::new(self, images);
 
-        Ok(())
-    }
-}
+        Background.render(&mut data)?;
 
-/// The game's background, which is always drawn.
-struct Background;
-
-impl Render for Background {
-    fn render(&self, mut data: RenderData) -> DrawResult {
-        let oscillation_angle = data.start.elapsed().as_nanos() as f64 / 1_000_000_000.0 * 2.1;
-
-        data.images.strip.set_alpha_mod(170);
-
-        for i in 0..7 {
-            Self::draw_strip(oscillation_angle, i, &mut data)?;
+        for (_, component) in components.ascending_iter() {
+            component.render(&mut data)?;
         }
-
-        Ok(())
-    }
-}
-
-impl Background {
-    fn draw_strip(angle: f64, i: usize, data: &mut RenderData) -> DrawResult {
-        const SIZE: u32 = 1060;
-        const SPACING: i32 = 400;
-        const ANGLE_SPEED: f64 = 100.0;
-
-        let offset =
-            (i as i32 - 3) * SPACING + ((angle * ANGLE_SPEED) as i32 % SPACING - SPACING / 2);
-        let center = Point::new(WIDTH as i32 / 2 + offset, HEIGHT as i32 / 2 + 10);
-
-        data.canvas.copy_ex(
-            &data.images.strip,
-            None,
-            Rect::from_center(center, SIZE, SIZE),
-            6.0_f64 * angle.sin() - 3.0_f64,
-            Some(center.into()),
-            false,
-            false,
-        )?;
 
         Ok(())
     }
