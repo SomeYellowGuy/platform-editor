@@ -11,7 +11,7 @@ use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
 use crate::component::Component;
 use crate::component::title::TitleBase;
-use crate::render::{Background, ComponentMap, DrawResult, Render, RenderData};
+use crate::render::{Background, DrawResult, Render, RenderData};
 use crate::{
     images::Images,
     options::{Options, PresentMode},
@@ -26,6 +26,8 @@ pub mod render;
 pub const WIDTH: u32 = 1280;
 /// The target height of the window.
 pub const HEIGHT: u32 = 720;
+
+pub type ComponentMap = platform_editor_core::component::ComponentMap<Component>;
 
 pub fn main() {
     let sdl_context = sdl3::init().unwrap();

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant};
+use std::time::Instant;
 
 use sdl3::{
     Error,
@@ -7,7 +7,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{App, component::Component, images::Images};
+use crate::{App, images::Images};
 
 pub type DrawResult = Result<(), Error>;
 
@@ -48,12 +48,12 @@ pub trait Render {
 pub struct Background;
 
 impl Render for Background {
-    fn render(&self, mut data: &mut RenderData) -> DrawResult {
+    fn render(&self, data: &mut RenderData) -> DrawResult {
         data.images.strip.set_alpha_mod(170);
         let oscillation_angle = data.oscillation_angle(2.1);
 
         for i in 0..7 {
-            Self::draw_strip(oscillation_angle, i, &mut data)?;
+            Self::draw_strip(oscillation_angle, i, data)?;
         }
 
         Ok(())
@@ -84,60 +84,5 @@ impl Background {
         )?;
 
         Ok(())
-    }
-}
-
-/// A map storing each component (via an ID) and giving each one a priority value to be rendered.
-///
-/// A higher priority means appearing later in the `iter` and `iter_mut` methods.
-pub struct ComponentMap {
-    components: HashMap<String, Component>,
-    render_priorities: HashMap<String, i32>,
-}
-
-impl ComponentMap {
-    /// Creates a new map.
-    pub fn new() -> Self {
-        Self {
-            components: HashMap::new(),
-            render_priorities: HashMap::new(),
-        }
-    }
-
-    /// Inserts a new [`Component`] in this map.
-    pub fn insert(&mut self, id: &str, component: Component, priority: i32) {
-        self.components.insert(id.to_string(), component);
-        self.render_priorities.insert(id.to_string(), priority);
-    }
-
-    /// Removes a [`Component`], with the provided key, from this map and returns the `Component`
-    /// if one could be removed.
-    pub fn remove(&mut self, id: &str) -> Option<Component> {
-        self.render_priorities.remove(id);
-        self.components.remove(id)
-    }
-
-    /// Provides an [`Iterator`], starting from the lowest-prioritized `Component`, where
-    /// each item is a reference to a `Component`.
-    ///
-    /// # Notes
-    ///
-    /// This is useful for rendering.
-    pub fn ascending_iter(&self) -> impl Iterator<Item = (&String, &Component)> {
-        let mut items: Vec<_> = self.components.iter().collect();
-        items.sort_by_key(|(s, _)| *self.render_priorities.get(*s).unwrap());
-        items.into_iter()
-    }
-
-    /// Provides an [`Iterator`], starting from the highest-prioritized `Component`, where
-    /// each item is a mutable reference to a `Component`.
-    ///
-    /// # Notes
-    ///
-    /// This is useful for executing logic.
-    pub fn descending_iter_mut(&mut self) -> impl Iterator<Item = (&String, &mut Component)> {
-        let mut items: Vec<_> = self.components.iter_mut().collect();
-        items.sort_by_key(|(s, _)| -*self.render_priorities.get(*s).unwrap());
-        items.into_iter()
     }
 }
