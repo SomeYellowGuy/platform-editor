@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use platform_editor_core::component::ComponentMapQueryType;
 use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::keyboard::Keycode;
@@ -10,8 +11,8 @@ use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
 use crate::component::Component;
-use crate::component::title::TitleBase;
 use crate::render::{Background, DrawResult, Render, RenderData};
+use crate::logic::Logic;
 use crate::{
     images::Images,
     options::{Options, PresentMode},
@@ -19,6 +20,7 @@ use crate::{
 
 pub mod component;
 pub mod images;
+pub mod logic;
 pub mod options;
 pub mod render;
 
@@ -26,6 +28,9 @@ pub mod render;
 pub const WIDTH: u32 = 1280;
 /// The target height of the window.
 pub const HEIGHT: u32 = 720;
+
+/// A priority for components with no logic.
+pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
 
 pub type ComponentMap = platform_editor_core::component::ComponentMap<Component>;
 
@@ -67,10 +72,7 @@ pub fn main() {
 
     let mut app = App {
         event_pump,
-        canvas,
-        options: Options {},
-        present_mode: PresentMode::Capped(60),
-        start: Instant::now(),
+        canvas
     };
 
     app.run(images)
@@ -82,6 +84,9 @@ pub fn main() {
 pub struct App {
     event_pump: EventPump,
     canvas: Canvas<Window>,
+}
+
+pub struct AppData {
     #[allow(unused)]
     options: Options,
     start: Instant,
@@ -91,14 +96,14 @@ pub struct App {
 
 impl App {
     /// Sets the [`PresentMode`] of the app.
-    pub fn set_present_mode(&mut self, mode: PresentMode) {
-        self.present_mode = mode;
-        self.update_with_present_mode();
+    pub fn set_present_mode(&mut self, data: &mut AppData, mode: PresentMode) {
+        data.present_mode = mode;
+        self.update_with_present_mode(data);
     }
 
-    fn update_with_present_mode(&mut self) {
+    fn update_with_present_mode(&mut self, data: &mut AppData) {
         // Update VSync.
-        let n = if matches!(self.present_mode, PresentMode::Vsync) {
+        let n = if matches!(data.present_mode, PresentMode::Vsync) {
             1
         } else {
             0
@@ -110,19 +115,25 @@ impl App {
     }
 
     pub fn run(&mut self, mut images: Images) {
+        let mut data: AppData = AppData {
+            options: Options {},
+            present_mode: PresentMode::Capped(60),
+            start: Instant::now()
+        };
         let mut components = ComponentMap::new();
 
-        components.insert("title", Component::Title(TitleBase), 0);
+        components.insert("title", Component::Title, 0, NO_LOGIC_PRIORITY);
 
-        self.update_with_present_mode();
+        self.update_with_present_mode(&mut data);
+        
         'running: loop {
-            match self.present_mode {
+            match data.present_mode {
                 PresentMode::Capped(max_fps) => {
                     // Calculate the minimum time for a single frame.
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
                     let start: Instant = Instant::now();
 
-                    if self.game_loop(&mut images, &mut components) {
+                    if self.game_loop(&mut images, &mut components, &mut data) {
                         break 'running;
                     }
 
@@ -135,7 +146,7 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(&mut images, &mut components) {
+                    if self.game_loop(&mut images, &mut components, &mut data) {
                         break 'running;
                     }
                 }
@@ -146,9 +157,12 @@ impl App {
     /// Runs the game loop once.
     ///
     /// Returns `true` if the game should be stopped.
-    fn game_loop(&mut self, images: &mut Images, components: &mut ComponentMap) -> bool {
-        if let Some(e) = self.render(images, components).err() {
-            println!("Error occured diring rendering: {e}");
+    fn game_loop(&mut self, images: &mut Images, components: &mut ComponentMap, app_data: &mut AppData) -> bool {
+
+        self.run_game_logic(components, app_data);
+
+        if let Some(e) = self.render(app_data, images, components).err() {
+            println!("Error occured during rendering: {e}");
         }
 
         for event in self.event_pump.poll_iter() {
@@ -170,18 +184,24 @@ impl App {
         false
     }
 
-    fn render(&mut self, images: &mut Images, components: &mut ComponentMap) -> DrawResult {
+    fn run_game_logic(&self, components: &mut ComponentMap, app_data: &mut AppData) {
+        for (_, component) in components.descending_iter_mut(ComponentMapQueryType::Logic) {
+            component.run_logic(app_data);
+        }
+    }
+
+    fn render(&mut self, data: &AppData, images: &mut Images, components: &mut ComponentMap) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
         self.canvas.clear();
 
         self.canvas.set_draw_color(Color::RGB(60, 60, 60));
         self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        let mut data = RenderData::new(self, images);
+        let mut data = RenderData::new(self, data, images);
 
         Background.render(&mut data)?;
 
-        for (_, component) in components.ascending_iter() {
+        for (_, component) in components.ascending_iter(ComponentMapQueryType::Render) {
             component.render(&mut data)?;
         }
 

@@ -7,7 +7,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{App, images::Images};
+use crate::{App, AppData, images::Images};
 
 pub type DrawResult = Result<(), Error>;
 
@@ -20,11 +20,11 @@ pub struct RenderData<'window, 'i, 'c> {
 
 impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     /// Creates some new `RenderData` with the provided app and images.
-    pub fn new(app: &'window mut App, images: &'i mut Images<'c>) -> Self {
+    pub fn new(app: &'window mut App, data: &'window AppData, images: &'i mut Images<'c>) -> Self {
         Self {
             canvas: &mut app.canvas,
             images,
-            start: app.start,
+            start: data.start,
         }
     }
 
@@ -50,7 +50,7 @@ pub struct Background;
 impl Render for Background {
     fn render(&self, data: &mut RenderData) -> DrawResult {
         data.images.strip.set_alpha_mod(170);
-        let oscillation_angle = data.oscillation_angle(2.1);
+        let oscillation_angle = data.oscillation_angle(2.6);
 
         for i in 0..7 {
             Self::draw_strip(oscillation_angle, i, data)?;

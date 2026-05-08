@@ -7,7 +7,7 @@ pub struct TitleBase;
 
 impl Render for TitleBase {
     fn render(&self, data: &mut RenderData) -> crate::render::DrawResult {
-        let oscillation_angle = data.oscillation_angle(2.1);
+        let oscillation_angle = data.oscillation_angle(2.6);
         let sine = oscillation_angle.sin();
 
         let scale_multiplier = 1.05 - (0.15 * sine).abs();
