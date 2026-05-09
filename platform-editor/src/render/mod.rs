@@ -4,27 +4,35 @@ use sdl3::{
     Error,
     rect::{Point, Rect},
     render::Canvas,
+    ttf::Font,
     video::Window,
 };
 
-use crate::{App, AppData, images::Images};
+use crate::{App, AppData, images::Textures};
 
 pub type DrawResult = Result<(), Error>;
 
 /// Useful data for rendering.
 pub struct RenderData<'window, 'i, 'c> {
     pub canvas: &'window mut Canvas<Window>,
-    pub images: &'i mut Images<'c>,
+    pub images: &'i mut Textures<'c>,
+    pub font: &'static Font<'static>,
     pub start: Instant,
 }
 
 impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     /// Creates some new `RenderData` with the provided app and images.
-    pub fn new(app: &'window mut App, data: &'window AppData, images: &'i mut Images<'c>) -> Self {
+    pub fn new(
+        app: &'window mut App,
+        data: &'window AppData,
+        images: &'i mut Textures<'c>,
+        font: &'static Font,
+    ) -> Self {
         Self {
             canvas: &mut app.canvas,
             images,
             start: data.start,
+            font,
         }
     }
 

@@ -1,27 +1,27 @@
 use std::time::{Duration, Instant};
 
-use platform_editor_core::component::ComponentMapQueryType;
+use platform_editor_core::component::button::{ButtonBase, ButtonType};
+use platform_editor_core::component::title::TitleBase;
+use platform_editor_core::component::{ComponentId, ComponentMapQueryType};
+use platform_editor_core::options::Options;
 use sdl3::EventPump;
 use sdl3::event::Event;
-use sdl3::keyboard::Keycode;
 use sdl3::pixels::Color;
 use sdl3::rect::Rect;
 use sdl3::render::Canvas;
+use sdl3::ttf::Font;
 use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
 use crate::component::Component;
+use crate::images::Textures;
+use crate::logic::input::{InputData, MouseEvent};
+use crate::logic::{Logic, LogicData};
 use crate::render::{Background, DrawResult, Render, RenderData};
-use crate::logic::Logic;
-use crate::{
-    images::Images,
-    options::{Options, PresentMode},
-};
 
 pub mod component;
 pub mod images;
 pub mod logic;
-pub mod options;
 pub mod render;
 
 /// The target width of the window.
@@ -33,6 +33,8 @@ pub const HEIGHT: u32 = 720;
 pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
 
 pub type ComponentMap = platform_editor_core::component::ComponentMap<Component>;
+
+pub type AppData = platform_editor_core::AppData<ExtraAppData>;
 
 pub fn main() {
     let sdl_context = sdl3::init().unwrap();
@@ -61,7 +63,13 @@ pub fn main() {
     }
 
     let texture_creator = canvas.texture_creator();
-    let images = Images::load(&texture_creator).expect("could not create images");
+
+    let context = sdl3::ttf::init().expect("could not initialize TTF context");
+    let font = context
+        .load_font("assets/font.ttf", 48.0)
+        .expect("could not load font");
+
+    let images = Textures::load(&texture_creator, &font).expect("could not create images");
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
@@ -70,12 +78,9 @@ pub fn main() {
         .event_pump()
         .expect("could not obtain the event pump");
 
-    let mut app = App {
-        event_pump,
-        canvas
-    };
+    let mut app = App { event_pump, canvas };
 
-    app.run(images)
+    app.run(images, font)
 }
 
 /// Represents the app.
@@ -86,24 +91,40 @@ pub struct App {
     canvas: Canvas<Window>,
 }
 
-pub struct AppData {
-    #[allow(unused)]
-    options: Options,
-    start: Instant,
+/// A mode deciding the maximum FPS or VSync.
+#[derive(Debug, Copy, Clone)]
+pub enum PresentMode {
+    /// No VSync, and the frame rate is capped to the provided number.
+    Capped(u32),
+    /// No VSync, and the frame rate is uncapped.
+    Uncapped,
+    /// VSync, so the frame rate is matched to that of the monitor.
+    Vsync,
+}
+
+pub struct ExtraAppData {
     // Although an option, this is handled separately by the app.
     present_mode: PresentMode,
+}
+
+impl Default for ExtraAppData {
+    fn default() -> Self {
+        Self {
+            present_mode: PresentMode::Capped(60),
+        }
+    }
 }
 
 impl App {
     /// Sets the [`PresentMode`] of the app.
     pub fn set_present_mode(&mut self, data: &mut AppData, mode: PresentMode) {
-        data.present_mode = mode;
+        data.extra.present_mode = mode;
         self.update_with_present_mode(data);
     }
 
     fn update_with_present_mode(&mut self, data: &mut AppData) {
         // Update VSync.
-        let n = if matches!(data.present_mode, PresentMode::Vsync) {
+        let n = if matches!(data.extra.present_mode, PresentMode::Vsync) {
             1
         } else {
             0
@@ -114,26 +135,43 @@ impl App {
         };
     }
 
-    pub fn run(&mut self, mut images: Images) {
+    pub fn run(&mut self, mut images: Textures, font: Font<'static>) {
         let mut data: AppData = AppData {
-            options: Options {},
-            present_mode: PresentMode::Capped(60),
-            start: Instant::now()
+            options: Options::default(),
+            start: Instant::now(),
+            extra: ExtraAppData::default(),
         };
+
         let mut components = ComponentMap::new();
 
-        components.insert("title", Component::Title, 0, NO_LOGIC_PRIORITY);
+        components.insert(
+            ComponentId::Title,
+            Component::Title(TitleBase),
+            0,
+            NO_LOGIC_PRIORITY,
+        );
+
+        for ty in ButtonType::ALL {
+            components.insert(
+                ComponentId::Button(ty),
+                Component::Button(ButtonBase::new(ty)),
+                0,
+                NO_LOGIC_PRIORITY,
+            );
+        }
 
         self.update_with_present_mode(&mut data);
-        
+
+        let font_ref = Box::leak(Box::new(font));
+
         'running: loop {
-            match data.present_mode {
+            match data.extra.present_mode {
                 PresentMode::Capped(max_fps) => {
                     // Calculate the minimum time for a single frame.
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
                     let start: Instant = Instant::now();
 
-                    if self.game_loop(&mut images, &mut components, &mut data) {
+                    if self.game_loop(&mut images, font_ref, &mut components, &mut data) {
                         break 'running;
                     }
 
@@ -146,7 +184,7 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(&mut images, &mut components, &mut data) {
+                    if self.game_loop(&mut images, font_ref, &mut components, &mut data) {
                         break 'running;
                     }
                 }
@@ -157,26 +195,61 @@ impl App {
     /// Runs the game loop once.
     ///
     /// Returns `true` if the game should be stopped.
-    fn game_loop(&mut self, images: &mut Images, components: &mut ComponentMap, app_data: &mut AppData) -> bool {
-
-        self.run_game_logic(components, app_data);
-
-        if let Some(e) = self.render(app_data, images, components).err() {
-            println!("Error occured during rendering: {e}");
-        }
+    fn game_loop(
+        &mut self,
+        images: &mut Textures,
+        font: &'static Font,
+        components: &mut ComponentMap,
+        app_data: &mut AppData,
+    ) -> bool {
+        let mut keys_up = Vec::new();
+        let mut keys_down = Vec::new();
+        let mut mouse_button_events = Vec::new();
 
         for event in self.event_pump.poll_iter() {
             match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => {
+                Event::Quit { .. } => {
                     return true;
                 }
-
+                Event::KeyUp {
+                    keycode: Some(key), ..
+                } => {
+                    keys_up.push(key);
+                }
+                Event::KeyDown {
+                    keycode: Some(key), ..
+                } => {
+                    keys_down.push(key);
+                }
+                Event::MouseButtonUp { mouse_btn, .. } => {
+                    mouse_button_events.push(MouseEvent::Up(mouse_btn));
+                }
+                Event::MouseButtonDown { mouse_btn, .. } => {
+                    mouse_button_events.push(MouseEvent::Down(mouse_btn));
+                }
                 _ => {}
             }
+        }
+
+        let mouse_state = self.event_pump.mouse_state();
+        let keyboard_state = self.event_pump.keyboard_state();
+
+        let logic_data = LogicData {
+            app_data,
+            input_data: InputData {
+                keys_down,
+                keys_up,
+                keyboard_state,
+
+                mouse_state,
+                mouse_events: mouse_button_events,
+            },
+        };
+
+        self.run_game_logic(components, logic_data);
+
+        if let Some(e) = self.render(app_data, images, font, components).err() {
+            println!("Error occured during rendering: {e}");
         }
 
         self.canvas.present();
@@ -184,20 +257,26 @@ impl App {
         false
     }
 
-    fn run_game_logic(&self, components: &mut ComponentMap, app_data: &mut AppData) {
+    fn run_game_logic(&self, components: &mut ComponentMap, mut logic_data: LogicData<'_>) {
         for (_, component) in components.descending_iter_mut(ComponentMapQueryType::Logic) {
-            component.run_logic(app_data);
+            component.run_logic(&mut logic_data);
         }
     }
 
-    fn render(&mut self, data: &AppData, images: &mut Images, components: &mut ComponentMap) -> DrawResult {
+    fn render(
+        &mut self,
+        data: &AppData,
+        images: &mut Textures,
+        font: &'static Font,
+        components: &mut ComponentMap,
+    ) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
         self.canvas.clear();
 
         self.canvas.set_draw_color(Color::RGB(60, 60, 60));
         self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        let mut data = RenderData::new(self, data, images);
+        let mut data = RenderData::new(self, data, images, font);
 
         Background.render(&mut data)?;
 

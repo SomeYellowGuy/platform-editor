@@ -1,9 +1,10 @@
+use platform_editor_core::component::title::TitleBase;
 use sdl3::rect::{Point, Rect};
 
-use crate::render::{Render, RenderData};
-
-/// Represents the animating title on the title screen.
-pub struct TitleBase;
+use crate::{
+    logic::Logic,
+    render::{Render, RenderData},
+};
 
 impl Render for TitleBase {
     fn render(&self, data: &mut RenderData) -> crate::render::DrawResult {
@@ -33,3 +34,5 @@ impl Render for TitleBase {
         Ok(())
     }
 }
+
+impl Logic for TitleBase {}
