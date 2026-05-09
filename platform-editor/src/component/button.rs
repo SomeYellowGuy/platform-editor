@@ -1,5 +1,6 @@
 use platform_editor_core::component::button::{ButtonBase, ButtonType};
 use sdl3::{
+    mouse::MouseButton,
     pixels::Color,
     rect::{Point, Rect},
     render::{Canvas, Texture, TextureCreator},
@@ -12,7 +13,7 @@ use crate::{
     render::{Render, RenderData},
 };
 
-/// Extracted font
+/// Stores the font texture sets for use in the button text.
 pub struct ExtractedFontTextureSets<'c> {
     pub play: ExtractedFontTextureSet<'c>,
     pub level_select: ExtractedFontTextureSet<'c>,
@@ -103,16 +104,17 @@ fn draw_text_texture(
 }
 
 fn button_rect(base: &ButtonBase) -> Rect {
+    let scale = base.scale_multiplier();
     Rect::from_center(
         Point::new(crate::WIDTH as i32 / 2, vertical_pos(base.ty)),
-        (600.0 * base.scale) as u32,
-        (150.0 * base.scale) as u32,
+        (600.0 * scale) as u32,
+        (150.0 * scale) as u32,
     )
 }
 
 impl Render for ButtonBase {
     fn render(&self, data: &mut RenderData) -> crate::render::DrawResult {
-        let scale_multiplier = 0.9;
+        let scale_multiplier = self.scale_multiplier();
         let vertical_pos = vertical_pos(self.ty);
         const BUTTON_SIZE: f32 = 128.0;
 
@@ -154,5 +156,19 @@ impl Render for ButtonBase {
 
 // TODO
 impl Logic for ButtonBase {
-    fn run_logic(&mut self, _data: &mut LogicData) {}
+    fn run_logic(&mut self, data: &mut LogicData) {
+        let point = data.mouse_pos();
+        let hovered = button_rect(self).contains_point(point);
+
+        if hovered {
+            self.held_time = (self.held_time as u128 + data.delta_time)
+                .min(ButtonBase::MAX_HELD_TIME as u128) as u32;
+        } else {
+            self.held_time = ((self.held_time as u128).saturating_sub(data.delta_time)) as u32;
+        }
+
+        if hovered && data.is_mouse_button_pressed(MouseButton::Left) {
+            todo!()
+        }
+    }
 }

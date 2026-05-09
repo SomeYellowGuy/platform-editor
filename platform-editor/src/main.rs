@@ -8,14 +8,14 @@ use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::pixels::Color;
 use sdl3::rect::Rect;
-use sdl3::render::Canvas;
+use sdl3::render::{Canvas, FPoint};
 use sdl3::ttf::Font;
 use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
 use crate::component::Component;
 use crate::images::Textures;
-use crate::logic::input::{InputData, MouseEvent};
+use crate::logic::input::{InputData, MouseEvent, converted_pos};
 use crate::logic::{Logic, LogicData};
 use crate::render::{Background, DrawResult, Render, RenderData};
 
@@ -163,15 +163,17 @@ impl App {
         self.update_with_present_mode(&mut data);
 
         let font_ref = Box::leak(Box::new(font));
+        let mut last_instant = Instant::now();
 
         'running: loop {
+            let start: Instant = Instant::now();
+            let delta = (start - last_instant).as_nanos();
             match data.extra.present_mode {
                 PresentMode::Capped(max_fps) => {
                     // Calculate the minimum time for a single frame.
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
-                    let start: Instant = Instant::now();
 
-                    if self.game_loop(&mut images, font_ref, &mut components, &mut data) {
+                    if self.game_loop(&mut images, font_ref, &mut components, &mut data, delta) {
                         break 'running;
                     }
 
@@ -184,11 +186,12 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(&mut images, font_ref, &mut components, &mut data) {
+                    if self.game_loop(&mut images, font_ref, &mut components, &mut data, delta) {
                         break 'running;
                     }
                 }
             }
+            last_instant = start
         }
     }
 
@@ -201,6 +204,7 @@ impl App {
         font: &'static Font,
         components: &mut ComponentMap,
         app_data: &mut AppData,
+        delta_time: u128,
     ) -> bool {
         let mut keys_up = Vec::new();
         let mut keys_down = Vec::new();
@@ -241,9 +245,15 @@ impl App {
                 keys_up,
                 keyboard_state,
 
-                mouse_state,
+                mouse_pos: converted_pos(
+                    FPoint::new(mouse_state.x(), mouse_state.y()),
+                    &self.canvas,
+                ),
                 mouse_events: mouse_button_events,
+                mouse_state,
             },
+            delta_time,
+            canvas: &self.canvas,
         };
 
         self.run_game_logic(components, logic_data);
