@@ -1,3 +1,4 @@
+use platform_editor_core::transition::TransitionCall;
 use sdl3::{
     keyboard::{Keycode, Scancode},
     mouse::MouseButton,
@@ -6,7 +7,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{AppData, logic::input::InputData};
+use crate::{AppData, logic::input::{InputData, MouseEvent}};
 
 pub mod input;
 
@@ -19,13 +20,32 @@ pub struct LogicData<'app> {
 
     /// A reference to the canvas.
     pub canvas: &'app Canvas<Window>,
+
+    /// The current transition call.
+    pub transition_call: TransitionCall
 }
 
 impl LogicData<'_> {
-    /// Returns whether the given `MouseButton` is pressed.
+    pub fn set_transition_call(&mut self, call: TransitionCall) {
+        self.transition_call = call;
+    }
+
+    /// Returns whether the given `MouseButton` is held.
     #[must_use]
-    pub fn is_mouse_button_pressed(&self, button: MouseButton) -> bool {
+    pub fn is_mouse_button_held(&self, button: MouseButton) -> bool {
         self.input_data.mouse_state.is_mouse_button_pressed(button)
+    }
+
+    /// Returns whether the given `MouseButton` is down (freshly pressed).
+    #[must_use]
+    pub fn is_mouse_button_down(&self, button: MouseButton) -> bool {
+        self.input_data.mouse_events.iter().any(|e| matches!(e, MouseEvent::Down(b) if *b == button))
+    }
+
+    /// Returns whether the given `MouseButton` is up (freshly released).
+    #[must_use]
+    pub fn is_mouse_button_up(&self, button: MouseButton) -> bool {
+        self.input_data.mouse_events.iter().any(|e| matches!(e, MouseEvent::Up(b) if *b == button))
     }
 
     /// Returns whether the provided [`Keycode`] is down (freshly pressed).

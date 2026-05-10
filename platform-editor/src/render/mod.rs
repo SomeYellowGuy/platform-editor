@@ -18,6 +18,8 @@ pub struct RenderData<'window, 'i, 'c> {
     pub images: &'i mut Textures<'c>,
     pub font: &'static Font<'static>,
     pub start: Instant,
+    /// The current transition's time, in nanoseconds.
+    pub transition_time: Option<u64>
 }
 
 impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
@@ -27,12 +29,14 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
         data: &'window AppData,
         images: &'i mut Textures<'c>,
         font: &'static Font,
+        transition_time: Option<u64>
     ) -> Self {
         Self {
             canvas: &mut app.canvas,
             images,
             start: data.start,
             font,
+            transition_time
         }
     }
 
@@ -41,8 +45,22 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     /// # Notes
     ///
     /// This is used to provide animations to the background and title, for example.
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
     pub fn oscillation_angle(&self, multiplier: f64) -> f64 {
         self.start.elapsed().as_nanos() as f64 / 1_000_000_000.0 * multiplier
+    }
+
+    /// Returns a transition offset at the current instant with the provided multiplier.
+    ///
+    /// # Notes
+    ///
+    /// This is used to provide animations to the buttons and title when
+    /// transitioning for example.
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
+    pub fn transition_offset(&self, multiplier: f32) -> f32 {
+        (self.transition_time.unwrap_or(0) / 1_000_000) as f32 / 40.0 * multiplier
     }
 }
 

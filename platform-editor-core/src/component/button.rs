@@ -23,7 +23,7 @@ impl ButtonBase {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(u8)]
-/// A unique type of button on the title screen.texture
+/// A unique type of button on the title screen texture.
 pub enum ButtonType {
     Play = 0,
     LevelSelect = 1,
@@ -32,15 +32,6 @@ pub enum ButtonType {
 
 impl ButtonType {
     pub const ALL: [Self; 3] = [Self::Play, Self::LevelSelect, Self::Options];
-
-    /// Returns the component ID of the button associated with this type.
-    pub const fn id(self) -> &'static str {
-        match self {
-            Self::Play => "button_play",
-            Self::LevelSelect => "button_level_select",
-            Self::Options => "button_options",
-        }
-    }
 
     pub fn title(self) -> &'static str {
         match self {

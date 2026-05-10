@@ -4,6 +4,7 @@ use platform_editor_core::component::button::{ButtonBase, ButtonType};
 use platform_editor_core::component::title::TitleBase;
 use platform_editor_core::component::{ComponentId, ComponentMapQueryType};
 use platform_editor_core::options::Options;
+use platform_editor_core::transition::{TransitionCall, TransitionManager};
 use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::pixels::Color;
@@ -135,7 +136,7 @@ impl App {
         };
     }
 
-    pub fn run(&mut self, mut images: Textures, font: Font<'static>) {
+    pub fn run(&mut self, mut textures: Textures, font: Font<'static>) {
         let mut data: AppData = AppData {
             options: Options::default(),
             start: Instant::now(),
@@ -165,6 +166,8 @@ impl App {
         let font_ref = Box::leak(Box::new(font));
         let mut last_instant = Instant::now();
 
+        let mut translation_manager = TransitionManager::new();
+
         'running: loop {
             let start: Instant = Instant::now();
             let delta = (start - last_instant).as_nanos();
@@ -173,7 +176,7 @@ impl App {
                     // Calculate the minimum time for a single frame.
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
 
-                    if self.game_loop(&mut images, font_ref, &mut components, &mut data, delta) {
+                    if self.game_loop(&mut textures, font_ref, &mut components, &mut data, &mut translation_manager, delta) {
                         break 'running;
                     }
 
@@ -186,7 +189,7 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(&mut images, font_ref, &mut components, &mut data, delta) {
+                    if self.game_loop(&mut textures, font_ref, &mut components, &mut data, &mut translation_manager, delta) {
                         break 'running;
                     }
                 }
@@ -204,6 +207,7 @@ impl App {
         font: &'static Font,
         components: &mut ComponentMap,
         app_data: &mut AppData,
+        transition_manager: &mut TransitionManager,
         delta_time: u128,
     ) -> bool {
         let mut keys_up = Vec::new();
@@ -254,11 +258,17 @@ impl App {
             },
             delta_time,
             canvas: &self.canvas,
+            transition_call: TransitionCall::None
         };
 
-        self.run_game_logic(components, logic_data);
+        let call = if !transition_manager.is_transitioning() {
+            self.run_game_logic(components, logic_data)
+        } else {
+            TransitionCall::None
+        };
+        transition_manager.tick(call);
 
-        if let Some(e) = self.render(app_data, images, font, components).err() {
+        if let Some(e) = self.render(app_data, images, font, components, transition_manager.time()).err() {
             println!("Error occured during rendering: {e}");
         }
 
@@ -267,10 +277,11 @@ impl App {
         false
     }
 
-    fn run_game_logic(&self, components: &mut ComponentMap, mut logic_data: LogicData<'_>) {
+    fn run_game_logic(&self, components: &mut ComponentMap, mut logic_data: LogicData<'_>) -> TransitionCall {
         for (_, component) in components.descending_iter_mut(ComponentMapQueryType::Logic) {
             component.run_logic(&mut logic_data);
         }
+        logic_data.transition_call
     }
 
     fn render(
@@ -279,6 +290,7 @@ impl App {
         images: &mut Textures,
         font: &'static Font,
         components: &mut ComponentMap,
+        transition_time: Option<u64>
     ) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
         self.canvas.clear();
@@ -286,7 +298,7 @@ impl App {
         self.canvas.set_draw_color(Color::RGB(60, 60, 60));
         self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        let mut data = RenderData::new(self, data, images, font);
+        let mut data = RenderData::new(self, data, images, font, transition_time);
 
         Background.render(&mut data)?;
 

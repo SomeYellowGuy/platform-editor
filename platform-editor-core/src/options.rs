@@ -1,9 +1,3 @@
 /// Options in the game.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Options {}
-
-impl Default for Options {
-    fn default() -> Self {
-        Self {}
-    }
-}

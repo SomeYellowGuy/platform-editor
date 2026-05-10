@@ -6,6 +6,7 @@ use crate::options::Options;
 
 pub mod component;
 pub mod options;
+pub mod transition;
 
 /// Stores "save data" in the game.
 /// `E` is the extra, platform-specific data.
