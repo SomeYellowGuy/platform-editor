@@ -1,3 +1,5 @@
+use crate::screen::Screen;
+
 /// A struct prividing button behavior.
 pub struct ButtonBase {
     pub ty: ButtonType,
@@ -38,6 +40,14 @@ impl ButtonType {
             Self::Play => "PLAY",
             Self::LevelSelect => "LEVEL SELECT",
             Self::Options => "OPTIONS",
+        }
+    }
+
+    pub fn destination_screen(self) -> Screen {
+        match self {
+            Self::Play => Screen::Level,
+            Self::LevelSelect => Screen::LevelSelect,
+            Self::Options => Screen::Options,
         }
     }
 }

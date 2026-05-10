@@ -1,10 +1,8 @@
 use std::time::{Duration, Instant};
 
-use platform_editor_core::component::button::{ButtonBase, ButtonType};
-use platform_editor_core::component::title::TitleBase;
-use platform_editor_core::component::{ComponentId, ComponentMapQueryType};
+use platform_editor_core::component::ComponentMapQueryType;
 use platform_editor_core::options::Options;
-use platform_editor_core::transition::{TransitionCall, TransitionManager};
+use platform_editor_core::screen::{ScreenManager, TransitionCall};
 use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::pixels::Color;
@@ -24,6 +22,7 @@ pub mod component;
 pub mod images;
 pub mod logic;
 pub mod render;
+pub mod screen;
 
 /// The target width of the window.
 pub const WIDTH: u32 = 1280;
@@ -145,28 +144,13 @@ impl App {
 
         let mut components = ComponentMap::new();
 
-        components.insert(
-            ComponentId::Title,
-            Component::Title(TitleBase),
-            0,
-            NO_LOGIC_PRIORITY,
-        );
-
-        for ty in ButtonType::ALL {
-            components.insert(
-                ComponentId::Button(ty),
-                Component::Button(ButtonBase::new(ty)),
-                0,
-                NO_LOGIC_PRIORITY,
-            );
-        }
-
         self.update_with_present_mode(&mut data);
 
         let font_ref = Box::leak(Box::new(font));
         let mut last_instant = Instant::now();
 
-        let mut translation_manager = TransitionManager::new();
+        let mut screen_manager = ScreenManager::new();
+        screen::on_enter(screen_manager.screen, &mut components);
 
         'running: loop {
             let start: Instant = Instant::now();
@@ -176,7 +160,14 @@ impl App {
                     // Calculate the minimum time for a single frame.
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
 
-                    if self.game_loop(&mut textures, font_ref, &mut components, &mut data, &mut translation_manager, delta) {
+                    if self.game_loop(
+                        &mut textures,
+                        font_ref,
+                        &mut components,
+                        &mut data,
+                        &mut screen_manager,
+                        delta,
+                    ) {
                         break 'running;
                     }
 
@@ -189,7 +180,14 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(&mut textures, font_ref, &mut components, &mut data, &mut translation_manager, delta) {
+                    if self.game_loop(
+                        &mut textures,
+                        font_ref,
+                        &mut components,
+                        &mut data,
+                        &mut screen_manager,
+                        delta,
+                    ) {
                         break 'running;
                     }
                 }
@@ -207,7 +205,7 @@ impl App {
         font: &'static Font,
         components: &mut ComponentMap,
         app_data: &mut AppData,
-        transition_manager: &mut TransitionManager,
+        transition_manager: &mut ScreenManager,
         delta_time: u128,
     ) -> bool {
         let mut keys_up = Vec::new();
@@ -258,7 +256,7 @@ impl App {
             },
             delta_time,
             canvas: &self.canvas,
-            transition_call: TransitionCall::None
+            transition_call: TransitionCall::None,
         };
 
         let call = if !transition_manager.is_transitioning() {
@@ -266,9 +264,22 @@ impl App {
         } else {
             TransitionCall::None
         };
-        transition_manager.tick(call);
 
-        if let Some(e) = self.render(app_data, images, font, components, transition_manager.time()).err() {
+        if let Some((old_screen, new_screen)) = transition_manager.tick(call) {
+            screen::on_exit(old_screen, components);
+            screen::on_enter(new_screen, components);
+        }
+
+        if let Some(e) = self
+            .render(
+                app_data,
+                images,
+                font,
+                components,
+                transition_manager.time(),
+            )
+            .err()
+        {
             println!("Error occured during rendering: {e}");
         }
 
@@ -277,7 +288,11 @@ impl App {
         false
     }
 
-    fn run_game_logic(&self, components: &mut ComponentMap, mut logic_data: LogicData<'_>) -> TransitionCall {
+    fn run_game_logic(
+        &self,
+        components: &mut ComponentMap,
+        mut logic_data: LogicData<'_>,
+    ) -> TransitionCall {
         for (_, component) in components.descending_iter_mut(ComponentMapQueryType::Logic) {
             component.run_logic(&mut logic_data);
         }
@@ -290,7 +305,7 @@ impl App {
         images: &mut Textures,
         font: &'static Font,
         components: &mut ComponentMap,
-        transition_time: Option<u64>
+        transition_time: Option<u64>,
     ) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
         self.canvas.clear();

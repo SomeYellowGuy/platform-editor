@@ -58,12 +58,23 @@ impl<C> ComponentMap<C> {
         self.logic_priorities.insert(id, logic_priority);
     }
 
-    /// Removes a component, with the provided key, from this map and returns the component
-    /// if one could be removed.
-    pub fn remove(&mut self, id: ComponentId) -> Option<C> {
+    /// Removes a component, with the provided key, from this map (if any).
+    pub fn remove(&mut self, id: ComponentId) {
         self.render_priorities.remove(&id);
         self.logic_priorities.remove(&id);
-        self.components.remove(&id)
+        self.components.remove(&id);
+    }
+
+    /// Removes components whose key satisfies the given predicate, from this map (if any).
+    pub fn remove_all(&mut self, predicate: impl Fn(ComponentId) -> bool) {
+        let ids: Vec<_> = self
+            .components
+            .keys()
+            .filter_map(|k| predicate(*k).then_some(*k))
+            .collect();
+        for component in ids {
+            self.remove(component);
+        }
     }
 
     fn priorities(&self, ty: ComponentMapQueryType) -> &HashMap<ComponentId, i32> {

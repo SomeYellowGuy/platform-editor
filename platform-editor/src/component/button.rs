@@ -1,4 +1,7 @@
-use platform_editor_core::{component::button::{ButtonBase, ButtonType}, transition::TransitionCall};
+use platform_editor_core::{
+    component::button::{ButtonBase, ButtonType},
+    screen::{TransitionCall, TransitionData},
+};
 use sdl3::{
     mouse::MouseButton,
     pixels::Color,
@@ -83,7 +86,7 @@ fn draw_text_texture(
     offset: i32,
     scale_multiplier: f32,
     vertical_pos: i32,
-    horizontal_offset: i32
+    horizontal_offset: i32,
 ) -> crate::render::DrawResult {
     const FONT_SIZE_MULTIPLIER: f32 = 1.43;
     let height = texture.height() as f32 * FONT_SIZE_MULTIPLIER * scale_multiplier;
@@ -92,7 +95,9 @@ fn draw_text_texture(
         texture,
         None,
         Rect::new(
-            (crate::WIDTH as i32 / 2) - (276.0 * scale_multiplier) as i32 + offset + horizontal_offset,
+            (crate::WIDTH as i32 / 2) - (276.0 * scale_multiplier) as i32
+                + offset
+                + horizontal_offset,
             vertical_pos - height as i32 / 2 + offset,
             (texture.width() as f32 * FONT_SIZE_MULTIPLIER * scale_multiplier) as u32,
             height as u32,
@@ -107,7 +112,10 @@ fn draw_text_texture(
 fn button_rect(base: &ButtonBase, horizontal_offset: i32) -> Rect {
     let scale = base.scale_multiplier();
     Rect::from_center(
-        Point::new(crate::WIDTH as i32 / 2 + horizontal_offset, vertical_pos(base.ty)),
+        Point::new(
+            crate::WIDTH as i32 / 2 + horizontal_offset,
+            vertical_pos(base.ty),
+        ),
         (600.0 * scale) as u32,
         (150.0 * scale) as u32,
     )
@@ -136,7 +144,8 @@ impl Render for ButtonBase {
             Rect::new(64 * (self.ty as u8) as i32, 0, 64, 64),
             Rect::from_center(
                 Point::new(
-                    (crate::WIDTH as i32 / 2 + horizontal_offset) + (225.0 * scale_multiplier) as i32,
+                    (crate::WIDTH as i32 / 2 + horizontal_offset)
+                        + (225.0 * scale_multiplier) as i32,
                     vertical_pos - 3,
                 ),
                 (BUTTON_SIZE * scale_multiplier) as u32,
@@ -151,8 +160,22 @@ impl Render for ButtonBase {
         // Render the text.
         let ExtractedFontTextureSet { top, bottom } = data.images.title_textures.set(self.ty);
 
-        draw_text_texture(bottom, data.canvas, 3, scale_multiplier, vertical_pos, horizontal_offset)?;
-        draw_text_texture(top, data.canvas, 0, scale_multiplier, vertical_pos, horizontal_offset)?;
+        draw_text_texture(
+            bottom,
+            data.canvas,
+            3,
+            scale_multiplier,
+            vertical_pos,
+            horizontal_offset,
+        )?;
+        draw_text_texture(
+            top,
+            data.canvas,
+            0,
+            scale_multiplier,
+            vertical_pos,
+            horizontal_offset,
+        )?;
 
         Ok(())
     }
@@ -172,7 +195,11 @@ impl Logic for ButtonBase {
         }
 
         if hovered && data.is_mouse_button_up(MouseButton::Left) {
-            data.set_transition_call(TransitionCall::Start(1_000_000_000));
+            data.set_transition_call(TransitionCall::Start(TransitionData::new(
+                1_000_000_000,
+                600_000_000,
+                self.ty.destination_screen(),
+            )));
         }
     }
 }

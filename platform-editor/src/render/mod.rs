@@ -18,8 +18,8 @@ pub struct RenderData<'window, 'i, 'c> {
     pub images: &'i mut Textures<'c>,
     pub font: &'static Font<'static>,
     pub start: Instant,
-    /// The current transition's time, in nanoseconds.
-    pub transition_time: Option<u64>
+    /// The current transition's data, if any.
+    pub transition_time: Option<u64>,
 }
 
 impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
@@ -29,14 +29,14 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
         data: &'window AppData,
         images: &'i mut Textures<'c>,
         font: &'static Font,
-        transition_time: Option<u64>
+        transition_time: Option<u64>,
     ) -> Self {
         Self {
             canvas: &mut app.canvas,
             images,
             start: data.start,
             font,
-            transition_time
+            transition_time,
         }
     }
 
