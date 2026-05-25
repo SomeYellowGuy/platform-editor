@@ -5,7 +5,7 @@ use sdl3::{
     video::WindowContext,
 };
 
-use crate::component::button::ExtractedFontTextureSets;
+use crate::component::title::button::ExtractedFontTextureSets;
 
 pub struct Textures<'c> {
     pub strip: Texture<'c>,
@@ -40,6 +40,7 @@ impl<'c> Textures<'c> {
                     "assets/gfx/level_select/perfect_star_highlight.png",
                 )?,
                 digits: Self::load_texture(creator, "assets/gfx/level_select/digits.png")?,
+                locked: Self::load_texture(creator, "assets/gfx/level_select/locked.png")?,
             },
         })
     }
@@ -58,4 +59,5 @@ pub struct LevelSelectTextures<'c> {
     pub stars: Texture<'c>,
     pub perfect_star_highlight: Texture<'c>,
     pub digits: Texture<'c>,
+    pub locked: Texture<'c>
 }

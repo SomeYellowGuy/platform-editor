@@ -1,9 +1,8 @@
 use std::{cmp::Reverse, collections::HashMap};
 
-use crate::component::button::ButtonType;
+use crate::component::title::button::ButtonType;
 
-pub mod button;
-pub mod level_select_button;
+pub mod level_select;
 pub mod title;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -11,6 +10,7 @@ pub enum ComponentId {
     Title,
     Button(ButtonType),
     LevelSelectButton(usize),
+    LevelSelectHeader
 }
 
 /// A map storing each component (via an ID) and giving each one a priority value to be rendered.

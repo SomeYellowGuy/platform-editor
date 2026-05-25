@@ -1,15 +1,18 @@
 use platform_editor_core::{
     component::{
         ComponentId,
-        button::{ButtonBase, ButtonType},
-        level_select_button::LevelSelectButtonBase,
-        title::TitleBase,
+        title::button::{ButtonBase, ButtonType},
+        level_select::button::LevelSelectButtonBase,
+        title::logo::TitleBase,
     },
     screen::Screen,
 };
 use sdl3::mouse::MouseButton;
 
-use crate::{ComponentMap, NO_LOGIC_PRIORITY, component::Component, logic::LogicData};
+use crate::{ComponentMap, LEVELS, NO_LOGIC_PRIORITY, component::{Component, level_select, level_select::button::LEVELS_PER_ROW}, logic::LogicData};
+
+/// The lnitial scroll value for the level select.
+pub const STARTING_LEVEL_SELECT_SCROLL: f32 = 100.0;
 
 /// Called when a screen is entered into.
 ///
@@ -39,7 +42,7 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
                 logic_data.app_data.level_select_scroll_velocity = 0.0;
             }
 
-            for level in 0..30 {
+            for level in 0..LEVELS {
                 map.insert(
                     ComponentId::LevelSelectButton(level),
                     Component::LevelSelectButton(LevelSelectButtonBase::new(level)),
@@ -72,18 +75,30 @@ pub fn tick(screen: Screen, logic_data: &mut LogicData) {
                 if let Some(prev_pos) = logic_data.app_data.extra.last_y_mouse_pos {
                     let delta = pos - prev_pos;
                     logic_data.app_data.level_select_scroll_velocity = delta;
-                    // Max out the velocity if needed.
-                    logic_data.app_data.level_select_scroll_velocity = logic_data
-                        .app_data
-                        .level_select_scroll_velocity
-                        .clamp(-20.0, 20.0);
                 }
                 logic_data.app_data.extra.last_y_mouse_pos = Some(pos);
             } else {
+                let delta_seconds = logic_data.delta_time as f32 / 1_000_000_000.0;
+                let max_scroll = STARTING_LEVEL_SELECT_SCROLL - level_select::button::SPACING * (LEVELS.div_ceil(LEVELS_PER_ROW) - 2).max(0) as f32 - 50.0;
+                // Push the scroll towards the level buttons if it is dragged out of bounds.
+                let drag_value: f32 = if logic_data.app_data.level_select_scroll > STARTING_LEVEL_SELECT_SCROLL {
+                    logic_data.app_data.level_select_scroll_velocity -= delta_seconds * 100.0;
+                    0.02
+                } else if logic_data.app_data.level_select_scroll < max_scroll {
+                    logic_data.app_data.level_select_scroll_velocity += delta_seconds * 100.0;
+                    0.02
+                } else {
+                    0.01
+                };
                 logic_data.app_data.level_select_scroll_velocity *=
-                    0.01_f32.powf(logic_data.delta_time as f32 / 1_000_000_000.0);
+                        drag_value.powf(delta_seconds);
                 logic_data.app_data.extra.last_y_mouse_pos = None;
             }
+            // Max out the velocity if needed.
+            logic_data.app_data.level_select_scroll_velocity = logic_data
+                .app_data
+                .level_select_scroll_velocity
+                .clamp(-20.0, 20.0);
             logic_data.app_data.level_select_scroll +=
                 logic_data.app_data.level_select_scroll_velocity;
         }

@@ -8,7 +8,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{App, AppData, ExtractedData, images::Textures};
+use crate::{App, AppData, ExtractedData, textures::Textures};
 
 pub type DrawResult = Result<(), Error>;
 

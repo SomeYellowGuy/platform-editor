@@ -1,5 +1,5 @@
 use platform_editor_core::component::{
-    button::ButtonBase, level_select_button::LevelSelectButtonBase, title::TitleBase,
+    title::button::ButtonBase, level_select::button::LevelSelectButtonBase, title::logo::TitleBase,
 };
 
 use crate::{
@@ -7,8 +7,7 @@ use crate::{
     render::{DrawResult, Render, RenderData},
 };
 
-pub mod button;
-pub mod level_select_button;
+pub mod level_select;
 pub mod title;
 
 macro_rules! impl_components {

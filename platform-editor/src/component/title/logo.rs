@@ -1,4 +1,4 @@
-use platform_editor_core::component::title::TitleBase;
+use platform_editor_core::component::title::logo::TitleBase;
 use sdl3::rect::{Point, Rect};
 
 use crate::{

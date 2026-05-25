@@ -13,13 +13,13 @@ use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
 use crate::component::Component;
-use crate::images::Textures;
+use crate::textures::Textures;
 use crate::logic::input::{InputData, MouseEvent, converted_pos};
 use crate::logic::{Logic, LogicData};
 use crate::render::{Background, DrawResult, Render, RenderData};
 
 pub mod component;
-pub mod images;
+pub mod textures;
 pub mod logic;
 pub mod render;
 pub mod screen;
@@ -29,6 +29,9 @@ pub mod util;
 pub const WIDTH: u32 = 1280;
 /// The target height of the window.
 pub const HEIGHT: u32 = 720;
+
+/// The total number of levels in the game.
+pub const LEVELS: usize = 30;
 
 /// A priority for components with no logic.
 pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
@@ -148,7 +151,7 @@ impl App {
             options: Options::default(),
             start: Instant::now(),
             extra: ExtraAppData::default(),
-            level_select_scroll: 100.0,
+            level_select_scroll: screen::STARTING_LEVEL_SELECT_SCROLL,
             level_select_scroll_velocity: 0.0,
         };
 
