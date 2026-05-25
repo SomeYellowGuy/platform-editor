@@ -134,7 +134,7 @@ impl Render for ButtonBase {
         let horizontal_offset = (t * t) as i32;
 
         data.canvas.copy_ex(
-            &data.images.title.button,
+            &data.textures.title.button,
             None,
             button_rect(self, horizontal_offset),
             0.0,
@@ -143,7 +143,7 @@ impl Render for ButtonBase {
             false,
         )?;
         data.canvas.copy_ex(
-            &data.images.title.button_icons,
+            &data.textures.title.button_icons,
             Rect::new(64 * (self.ty as u8) as i32, 0, 64, 64),
             Rect::from_center(
                 Point::new(
@@ -161,7 +161,7 @@ impl Render for ButtonBase {
         )?;
 
         // Render the text.
-        let ExtractedFontTextureSet { top, bottom } = data.images.title.texts.set(self.ty);
+        let ExtractedFontTextureSet { top, bottom } = data.textures.title.texts.set(self.ty);
 
         draw_text_texture(
             &bottom,
@@ -194,8 +194,8 @@ impl Logic for ButtonBase {
 
         if hovered && data.is_mouse_button_up(MouseButton::Left) {
             data.set_transition_call(TransitionCall::Start(TransitionData::new(
-                1_000_000_000,
-                600_000_000,
+                800_000_000,
+                700_000_000,
                 self.ty.destination_screen(),
             )));
         }

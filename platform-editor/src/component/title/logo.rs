@@ -1,4 +1,4 @@
-use platform_editor_core::component::title::logo::TitleBase;
+use platform_editor_core::component::title::TitleBase;
 use sdl3::rect::{Point, Rect};
 
 use crate::{
@@ -16,7 +16,7 @@ impl Render for TitleBase {
         let vertical_offset = -(t * t) as i32;
 
         data.canvas.copy_ex(
-            &data.images.title.title,
+            &data.textures.title.title,
             None,
             Rect::from_center(
                 Point::new(

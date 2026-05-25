@@ -7,22 +7,22 @@ use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::pixels::Color;
 use sdl3::rect::Rect;
-use sdl3::render::{Canvas, FPoint};
+use sdl3::render::{BlendMode, Canvas, FPoint};
 use sdl3::ttf::Font;
 use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
 use crate::component::Component;
-use crate::textures::Textures;
 use crate::logic::input::{InputData, MouseEvent, converted_pos};
 use crate::logic::{Logic, LogicData};
 use crate::render::{Background, DrawResult, Render, RenderData};
+use crate::textures::Textures;
 
 pub mod component;
-pub mod textures;
 pub mod logic;
 pub mod render;
 pub mod screen;
+pub mod textures;
 pub mod util;
 
 /// The target width of the window.
@@ -341,9 +341,11 @@ impl App {
 
         let mut data = RenderData::new(self, data, images, font, transition_time, extracted);
 
+        data.canvas.set_blend_mode(BlendMode::None);
         Background.render(&mut data)?;
 
         for (_, component) in components.ascending_iter(ComponentMapQueryType::Render) {
+            data.canvas.set_blend_mode(BlendMode::None);
             component.render(&mut data)?;
         }
 

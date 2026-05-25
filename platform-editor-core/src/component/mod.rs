@@ -5,12 +5,46 @@ use crate::component::title::button::ButtonType;
 pub mod level_select;
 pub mod title;
 
+/// Represents the back button of a screen.
+pub struct BackButtonBase {
+    pub hold_time: u32,
+    pub pos: (i32, i32),
+    pub mode: BackButtonMode
+}
+
+/// Specifies the behavior of the back button when clicked.
+#[derive(Debug, Clone, Copy)]
+pub enum BackButtonMode {
+    BackToTitle
+}
+
+impl BackButtonBase {
+    pub fn new(pos: (i32, i32), mode: BackButtonMode) -> Self {
+        Self {
+            pos, hold_time: 0, mode
+        }
+    }
+}
+
+impl Hold for BackButtonBase {
+    const MAX_HOLD_TIME: u32 = 400_000_000;
+
+    fn hold_time(&self) -> u32 {
+        self.hold_time
+    }
+
+    fn set_hold_time(&mut self, new_time: u32) {
+        self.hold_time = new_time;
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ComponentId {
     Title,
     Button(ButtonType),
     LevelSelectButton(usize),
-    LevelSelectHeader
+    LevelSelectHeader,
+    BackButton
 }
 
 /// A map storing each component (via an ID) and giving each one a priority value to be rendered.

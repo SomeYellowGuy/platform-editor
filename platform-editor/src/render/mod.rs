@@ -15,7 +15,7 @@ pub type DrawResult = Result<(), Error>;
 /// Useful data for rendering.
 pub struct RenderData<'window, 'i, 'c> {
     pub canvas: &'window mut Canvas<Window>,
-    pub images: &'i mut Textures<'c>,
+    pub textures: &'i mut Textures<'c>,
     pub font: &'static Font<'static>,
     pub start: Instant,
     /// The current transition's data, if any.
@@ -28,14 +28,14 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     pub fn new(
         app: &'window mut App,
         data: &'window AppData,
-        images: &'i mut Textures<'c>,
+        textures: &'i mut Textures<'c>,
         font: &'static Font,
         transition_time: Option<u64>,
         extracted: &'i ExtractedData,
     ) -> Self {
         Self {
             canvas: &mut app.canvas,
-            images,
+            textures,
             start: data.start,
             font,
             transition_time,
@@ -78,7 +78,7 @@ pub struct Background;
 
 impl Render for Background {
     fn render(&self, data: &mut RenderData) -> DrawResult {
-        data.images.strip.set_alpha_mod(60);
+        data.textures.strip.set_alpha_mod(60);
         let oscillation_angle = data.oscillation_angle(2.6);
 
         for i in 0..7 {
@@ -103,7 +103,7 @@ impl Background {
         );
 
         data.canvas.copy_ex(
-            &data.images.strip,
+            &data.textures.strip,
             None,
             Rect::from_center(center, SIZE, SIZE),
             6.0_f64 * angle.sin() - 3.0_f64,

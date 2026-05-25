@@ -32,12 +32,15 @@ fn normal_pos(base: &LevelSelectButtonBase, scroll: f32) -> FPoint {
 const STAR_OFFSETS: [((f32, f32), f64); 3] = [
     ((-66.0, 38.0), 20.0),
     ((0.0, 60.0), 0.0),
-    ((66.0, 38.0), -20.0)
+    ((66.0, 38.0), -20.0),
 ];
 
 impl Render for LevelSelectButtonBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
-        let pos = normal_pos(self, data.extracted_data.y_scroll);
+        let mut pos = normal_pos(self, data.extracted_data.y_scroll);
+        let t = data.transition_offset(1.6);
+        pos.y += t * t;
+        
         let scale_multiplier = self.scale_multiplier();
 
         // If the button is currently held, add rotation.
@@ -49,7 +52,7 @@ impl Render for LevelSelectButtonBase {
 
         // 1: draw the level button itself
         data.canvas.copy_ex(
-            &data.images.level_select.level_buttons,
+            &data.textures.level_select.level_buttons,
             Rect::new(0, 0, 90, 90),
             util::frect_from_center(pos, SIDE * scale_multiplier, SIDE * scale_multiplier),
             rotation,
@@ -70,9 +73,12 @@ impl Render for LevelSelectButtonBase {
             number /= 10;
             // Draw digits for the level.
             // The original texturte is 600 by 80.
-            data.images.level_select.digits.set_color_mod(120, 120, 120);
+            data.textures
+                .level_select
+                .digits
+                .set_color_mod(120, 120, 120);
             data.canvas.copy_ex(
-                &data.images.level_select.digits,
+                &data.textures.level_select.digits,
                 FRect::new(60.0 * digit as f32, 0.0, 60.0, 80.0),
                 frect_from_center(digit_pos, 60.0 * NUMBER_SCALE, 80.0 * NUMBER_SCALE),
                 0.0,
@@ -94,12 +100,14 @@ impl Render for LevelSelectButtonBase {
                 pos
             };
             data.canvas.copy_ex(
-                &data.images.level_select.stars,
-                FRect::new(if collected {40.0} else {0.0}, 0.0, 40.0, 40.0),
+                &data.textures.level_select.stars,
+                FRect::new(if collected { 40.0 } else { 0.0 }, 0.0, 40.0, 40.0),
                 util::frect_from_center(star_pos, 75.0, 75.0),
                 star_offset.1,
                 None,
-                false, false)?;
+                false,
+                false,
+            )?;
         }
 
         Ok(())

@@ -1,2 +1,4 @@
 pub mod button;
-pub mod logo;
+
+/// Represents the animating title on the title screen.
+pub struct TitleBase;
