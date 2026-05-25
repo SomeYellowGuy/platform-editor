@@ -1,4 +1,6 @@
-use platform_editor_core::component::{button::ButtonBase, title::TitleBase};
+use platform_editor_core::component::{
+    button::ButtonBase, level_select_button::LevelSelectButtonBase, title::TitleBase,
+};
 
 use crate::{
     logic::{Logic, LogicData},
@@ -6,6 +8,7 @@ use crate::{
 };
 
 pub mod button;
+pub mod level_select_button;
 pub mod title;
 
 macro_rules! impl_components {
@@ -32,9 +35,13 @@ macro_rules! impl_components {
 pub enum Component {
     Title(TitleBase),
     Button(ButtonBase),
+
+    LevelSelectButton(LevelSelectButtonBase),
 }
 
 impl_components! {
     Title,
-    Button
+    Button,
+
+    LevelSelectButton
 }

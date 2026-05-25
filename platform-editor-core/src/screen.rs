@@ -33,40 +33,53 @@ pub struct ScreenManager {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TransitionData {
-    /// The time, in nanoseconds, to end the transition.
-    time: u64,
-    /// Only for if this transition is for exiting a screen.
-    ///
-    /// Stores extra data for an exit transition.
-    exit_transition: Option<ExitTransitionData>,
+pub enum TransitionData {
+    Entry {
+        // The total duration of the transition.
+        duration: u64,
+        /// The previous screen.
+        previous_screen: Screen,
+    },
+    Exit {
+        // The total duration of the transition.
+        duration: u64,
+        /// The new screen.
+        new_screen: Screen,
+        /// The time for the entry transition immediately after this one.
+        enter_time: u64,
+    },
 }
 
 impl TransitionData {
-    /// Creates data for a new transition.
+    /// Creates data for a new (exit) transition, .
     ///
     /// Both times are in nanoseconds.
     pub fn new(exit_time: u64, enter_time: u64, new_screen: Screen) -> Self {
-        Self {
-            time: exit_time,
-            exit_transition: Some(ExitTransitionData {
-                new_screen,
-                enter_time,
-            }),
+        Self::Exit {
+            duration: exit_time,
+            new_screen,
+            enter_time,
         }
     }
 
     pub fn is_exit(&self) -> bool {
-        self.exit_transition.is_some()
+        matches!(self, Self::Exit { .. })
     }
-}
 
-#[derive(Debug, Clone, Copy)]
-struct ExitTransitionData {
-    /// The new screen.
-    new_screen: Screen,
-    /// The time for the entry transition immediately after this one.
-    enter_time: u64,
+    fn other_screen(&self) -> Screen {
+        match self {
+            Self::Entry {
+                previous_screen, ..
+            } => *previous_screen,
+            Self::Exit { new_screen, .. } => *new_screen,
+        }
+    }
+
+    fn time(&self) -> u64 {
+        match self {
+            Self::Entry { duration, .. } | Self::Exit { duration, .. } => *duration,
+        }
+    }
 }
 
 /// Public transition data for rendering.
@@ -78,9 +91,14 @@ pub struct TransitionStatus {
     /// - For an exit transition, this returns the time elapsed.
     /// - For an entry transition, this returns the time **left**.
     pub time: u64,
-    
+
+    /// The previous or next screen, depending on the type of transition.
+    /// - For an exit transition, this returns the *next screen*.
+    /// - For an entry transition, this returns the *previous screen*.
+    pub screen: Screen,
+
     /// Returns whether this transition is an exit transition.
-    pub is_exit: bool
+    pub is_exit: bool,
 }
 
 impl Default for ScreenManager {
@@ -117,7 +135,7 @@ impl ScreenManager {
             if data.is_exit() {
                 self.internal_time()
             } else {
-                data.time.saturating_sub(self.internal_time())
+                data.time().saturating_sub(self.internal_time())
             }
         })
     }
@@ -138,17 +156,23 @@ impl ScreenManager {
         }
 
         if let Some(data) = self.transition_data
-            && self.internal_time() > data.time
+            && self.internal_time() > data.time()
         {
-            if let Some(exit) = data.exit_transition {
+            if let TransitionData::Exit {
+                new_screen,
+                enter_time,
+                ..
+            } = data
+            {
                 // Exit transition ended: start the enter transition.
                 // Change the screen.
                 let old_screen = self.screen;
-                self.screen = exit.new_screen;
+                self.screen = new_screen;
+                self.last_transition_instant = Instant::now();
 
-                self.transition_data = Some(TransitionData {
-                    time: exit.enter_time,
-                    exit_transition: None,
+                self.transition_data = Some(TransitionData::Entry {
+                    duration: enter_time,
+                    previous_screen: old_screen,
                 });
 
                 return Some((old_screen, self.screen));
@@ -161,11 +185,10 @@ impl ScreenManager {
     }
 
     pub fn transition_status(&self) -> Option<TransitionStatus> {
-        self.transition_data.map(|data| {
-            TransitionStatus {
-                time: data.time,
-                is_exit: data.is_exit()
-            }
+        self.transition_data.map(|data| TransitionStatus {
+            time: self.time().unwrap(),
+            is_exit: data.is_exit(),
+            screen: data.other_screen(),
         })
     }
 }

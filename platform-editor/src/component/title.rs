@@ -16,7 +16,7 @@ impl Render for TitleBase {
         let vertical_offset = -(t * t) as i32;
 
         data.canvas.copy_ex(
-            &data.images.title,
+            &data.images.title.title,
             None,
             Rect::from_center(
                 Point::new(

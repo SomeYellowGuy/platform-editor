@@ -3,12 +3,14 @@ use std::{cmp::Reverse, collections::HashMap};
 use crate::component::button::ButtonType;
 
 pub mod button;
+pub mod level_select_button;
 pub mod title;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ComponentId {
     Title,
     Button(ButtonType),
+    LevelSelectButton(usize),
 }
 
 /// A map storing each component (via an ID) and giving each one a priority value to be rendered.
@@ -144,5 +146,24 @@ impl<C> ComponentMap<C> {
 impl<C> Default for ComponentMap<C> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// A trait for something that can be "held", like a button.
+pub trait Hold {
+    const MAX_HOLD_TIME: u32;
+
+    fn hold_time(&self) -> u32;
+    fn set_hold_time(&mut self, new_time: u32);
+
+    fn update_hold_time(&mut self, delta: u128, held: bool) {
+        let hold_time = self.hold_time();
+        if held {
+            self.set_hold_time(
+                (self.hold_time() as u128 + delta).min(Self::MAX_HOLD_TIME as u128) as u32,
+            );
+        } else {
+            self.set_hold_time((hold_time as u128).saturating_sub(delta) as u32);
+        }
     }
 }

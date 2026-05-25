@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use platform_editor_core::component::ComponentMapQueryType;
 use platform_editor_core::options::Options;
-use platform_editor_core::screen::{ScreenManager, TransitionCall};
+use platform_editor_core::screen::{Screen, ScreenManager, TransitionCall};
 use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::pixels::Color;
@@ -23,6 +23,7 @@ pub mod images;
 pub mod logic;
 pub mod render;
 pub mod screen;
+pub mod util;
 
 /// The target width of the window.
 pub const WIDTH: u32 = 1280;
@@ -105,14 +106,21 @@ pub enum PresentMode {
 pub struct ExtraAppData {
     // Although an option, this is handled separately by the app.
     present_mode: PresentMode,
+    /// The last Y mouse position, if any, which is used for scrolling in the level select.
+    last_y_mouse_pos: Option<f32>,
 }
 
 impl Default for ExtraAppData {
     fn default() -> Self {
         Self {
             present_mode: PresentMode::Capped(60),
+            last_y_mouse_pos: None,
         }
     }
+}
+
+pub struct ExtractedData {
+    pub y_scroll: f32,
 }
 
 impl App {
@@ -140,6 +148,8 @@ impl App {
             options: Options::default(),
             start: Instant::now(),
             extra: ExtraAppData::default(),
+            level_select_scroll: 100.0,
+            level_select_scroll_velocity: 0.0,
         };
 
         let mut components = ComponentMap::new();
@@ -150,7 +160,7 @@ impl App {
         let mut last_instant = Instant::now();
 
         let mut screen_manager = ScreenManager::new();
-        screen::on_enter(screen_manager.screen, &mut components);
+        screen::on_enter(screen_manager.screen, &mut components, None);
 
         'running: loop {
             let start: Instant = Instant::now();
@@ -160,7 +170,7 @@ impl App {
                     // Calculate the minimum time for a single frame.
                     let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
 
-                    if self.game_loop(
+                    if self.game_tick(
                         &mut textures,
                         font_ref,
                         &mut components,
@@ -180,7 +190,7 @@ impl App {
                     }
                 }
                 PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_loop(
+                    if self.game_tick(
                         &mut textures,
                         font_ref,
                         &mut components,
@@ -199,7 +209,7 @@ impl App {
     /// Runs the game loop once.
     ///
     /// Returns `true` if the game should be stopped.
-    fn game_loop(
+    fn game_tick(
         &mut self,
         images: &mut Textures,
         font: &'static Font,
@@ -208,6 +218,8 @@ impl App {
         transition_manager: &mut ScreenManager,
         delta_time: u128,
     ) -> bool {
+        // Logic
+
         let mut keys_up = Vec::new();
         let mut keys_down = Vec::new();
         let mut mouse_button_events = Vec::new();
@@ -240,7 +252,7 @@ impl App {
         let mouse_state = self.event_pump.mouse_state();
         let keyboard_state = self.event_pump.keyboard_state();
 
-        let logic_data = LogicData {
+        let mut logic_data = LogicData {
             app_data,
             input_data: InputData {
                 keys_down,
@@ -260,15 +272,22 @@ impl App {
         };
 
         let call = if !transition_manager.is_transitioning() {
-            self.run_game_logic(components, logic_data)
+            self.run_game_logic(components, &mut logic_data, transition_manager.screen);
+            logic_data.transition_call
         } else {
             TransitionCall::None
         };
 
         if let Some((old_screen, new_screen)) = transition_manager.tick(call) {
             screen::on_exit(old_screen, components);
-            screen::on_enter(new_screen, components);
+            screen::on_enter(new_screen, components, Some(&mut logic_data));
         }
+
+        // Rendering
+
+        let extracted = ExtractedData {
+            y_scroll: app_data.level_select_scroll,
+        };
 
         if let Some(e) = self
             .render(
@@ -277,6 +296,7 @@ impl App {
                 font,
                 components,
                 transition_manager.time(),
+                &extracted,
             )
             .err()
         {
@@ -291,12 +311,14 @@ impl App {
     fn run_game_logic(
         &self,
         components: &mut ComponentMap,
-        mut logic_data: LogicData<'_>,
-    ) -> TransitionCall {
+        logic_data: &mut LogicData<'_>,
+        screen: Screen,
+    ) {
+        screen::tick(screen, logic_data);
+
         for (_, component) in components.descending_iter_mut(ComponentMapQueryType::Logic) {
-            component.run_logic(&mut logic_data);
+            component.run_logic(logic_data);
         }
-        logic_data.transition_call
     }
 
     fn render(
@@ -306,6 +328,7 @@ impl App {
         font: &'static Font,
         components: &mut ComponentMap,
         transition_time: Option<u64>,
+        extracted: &ExtractedData,
     ) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
         self.canvas.clear();
@@ -313,7 +336,7 @@ impl App {
         self.canvas.set_draw_color(Color::RGB(60, 60, 60));
         self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        let mut data = RenderData::new(self, data, images, font, transition_time);
+        let mut data = RenderData::new(self, data, images, font, transition_time, extracted);
 
         Background.render(&mut data)?;
 

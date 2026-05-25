@@ -1,5 +1,8 @@
 use platform_editor_core::{
-    component::button::{ButtonBase, ButtonType},
+    component::{
+        Hold,
+        button::{ButtonBase, ButtonType},
+    },
     screen::{TransitionCall, TransitionData},
 };
 use sdl3::{
@@ -131,7 +134,7 @@ impl Render for ButtonBase {
         let horizontal_offset = (t * t) as i32;
 
         data.canvas.copy_ex(
-            &data.images.button,
+            &data.images.title.button,
             None,
             button_rect(self, horizontal_offset),
             0.0,
@@ -140,7 +143,7 @@ impl Render for ButtonBase {
             false,
         )?;
         data.canvas.copy_ex(
-            &data.images.button_icons,
+            &data.images.title.button_icons,
             Rect::new(64 * (self.ty as u8) as i32, 0, 64, 64),
             Rect::from_center(
                 Point::new(
@@ -158,7 +161,7 @@ impl Render for ButtonBase {
         )?;
 
         // Render the text.
-        let ExtractedFontTextureSet { top, bottom } = data.images.title_textures.set(self.ty);
+        let ExtractedFontTextureSet { top, bottom } = data.images.title.texts.set(self.ty);
 
         draw_text_texture(
             bottom,
@@ -187,12 +190,7 @@ impl Logic for ButtonBase {
         let point = data.mouse_pos();
         let hovered = button_rect(self, 0).contains_point(point);
 
-        if hovered {
-            self.held_time = (self.held_time as u128 + data.delta_time)
-                .min(ButtonBase::MAX_HELD_TIME as u128) as u32;
-        } else {
-            self.held_time = ((self.held_time as u128).saturating_sub(data.delta_time)) as u32;
-        }
+        self.update_hold_time(data.delta_time, hovered);
 
         if hovered && data.is_mouse_button_up(MouseButton::Left) {
             data.set_transition_call(TransitionCall::Start(TransitionData::new(

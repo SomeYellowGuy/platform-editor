@@ -8,7 +8,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{App, AppData, images::Textures};
+use crate::{App, AppData, ExtractedData, images::Textures};
 
 pub type DrawResult = Result<(), Error>;
 
@@ -20,6 +20,7 @@ pub struct RenderData<'window, 'i, 'c> {
     pub start: Instant,
     /// The current transition's data, if any.
     pub transition_time: Option<u64>,
+    pub extracted_data: &'i ExtractedData,
 }
 
 impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
@@ -30,6 +31,7 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
         images: &'i mut Textures<'c>,
         font: &'static Font,
         transition_time: Option<u64>,
+        extracted: &'i ExtractedData,
     ) -> Self {
         Self {
             canvas: &mut app.canvas,
@@ -37,6 +39,7 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
             start: data.start,
             font,
             transition_time,
+            extracted_data: extracted,
         }
     }
 
@@ -75,7 +78,7 @@ pub struct Background;
 
 impl Render for Background {
     fn render(&self, data: &mut RenderData) -> DrawResult {
-        data.images.strip.set_alpha_mod(170);
+        data.images.strip.set_alpha_mod(60);
         let oscillation_angle = data.oscillation_angle(2.6);
 
         for i in 0..7 {

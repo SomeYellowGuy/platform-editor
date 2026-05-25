@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use crate::options::Options;
 
+pub mod common_util;
 pub mod component;
 pub mod options;
 pub mod screen;
@@ -14,5 +15,9 @@ pub struct AppData<E: Default> {
     #[allow(unused)]
     pub options: Options,
     pub start: Instant,
+
+    pub level_select_scroll: f32,
+    pub level_select_scroll_velocity: f32,
+
     pub extra: E,
 }
