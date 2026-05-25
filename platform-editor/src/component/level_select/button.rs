@@ -38,8 +38,8 @@ const STAR_OFFSETS: [((f32, f32), f64); 3] = [
 impl Render for LevelSelectButtonBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
         let mut pos = normal_pos(self, data.extracted_data.y_scroll);
-        let t = data.transition_offset(1.6);
-        pos.y += t * t;
+        let t = data.transition_offset(1.8);
+        pos.x += t * t;
         
         let scale_multiplier = self.scale_multiplier();
 
