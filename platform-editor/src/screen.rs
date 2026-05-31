@@ -1,13 +1,12 @@
 use platform_editor_core::{
-    component::{
+    common_util::{self, ScrollInfo}, component::{
         BackButtonBase, BackButtonMode, ComponentId,
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{
             TitleBase,
             button::{ButtonBase, ButtonType},
         },
-    },
-    screen::Screen,
+    }, screen::Screen
 };
 use sdl3::mouse::MouseButton;
 
@@ -15,7 +14,7 @@ use crate::{
     ComponentMap, LEVELS, NO_LOGIC_PRIORITY, WIDTH,
     component::{
         Component,
-        level_select::{self, button::LEVELS_PER_ROW},
+        level_select::{button::{LEVELS_PER_ROW, SPACING}},
     },
     logic::LogicData,
 };
@@ -108,43 +107,21 @@ pub fn tick(screen: Screen, logic_data: &mut LogicData) {
     match screen {
         Screen::LevelSelect => {
             let delta_seconds = logic_data.delta_time as f32 / 1_000_000_000.0;
+            let pos = logic_data.mouse_fpos().y;
 
-            if logic_data.is_mouse_button_held(MouseButton::Left) {
-                let pos = logic_data.mouse_fpos().y;
-                if let Some(prev_pos) = logic_data.app_data.extra.last_y_mouse_pos {
-                    let delta = pos - prev_pos;
-                    logic_data.app_data.level_select_scroll_velocity = delta;
-                }
-                logic_data.app_data.extra.last_y_mouse_pos = Some(pos);
-            } else {
-                let max_scroll = STARTING_LEVEL_SELECT_SCROLL
-                    - level_select::button::SPACING
-                        * (LEVELS.div_ceil(LEVELS_PER_ROW) - 2).max(0) as f32
-                    - 50.0;
-                // Push the scroll towards the level buttons if it is dragged out of bounds.
-                let (drag_value, out_by): (f32, f32) =
-                    if logic_data.app_data.level_select_scroll > STARTING_LEVEL_SELECT_SCROLL {
-                        logic_data.app_data.level_select_scroll_velocity -= delta_seconds * 100.0;
-                        (
-                            0.01,
-                            STARTING_LEVEL_SELECT_SCROLL - logic_data.app_data.level_select_scroll,
-                        )
-                    } else if logic_data.app_data.level_select_scroll < max_scroll {
-                        logic_data.app_data.level_select_scroll_velocity += delta_seconds * 100.0;
-                        (0.01, max_scroll - logic_data.app_data.level_select_scroll)
-                    } else {
-                        (0.01, 0.0)
-                    };
-                logic_data.app_data.level_select_scroll_velocity *= drag_value.powf(delta_seconds);
-                // Max out the velocity if needed.
-                logic_data.app_data.level_select_scroll_velocity = logic_data
-                    .app_data
-                    .level_select_scroll_velocity
-                    .clamp(-10.0 + out_by / 10.0, 10.0 + out_by / 10.0);
-                logic_data.app_data.extra.last_y_mouse_pos = None;
-            }
-            logic_data.app_data.level_select_scroll +=
-                logic_data.app_data.level_select_scroll_velocity * delta_seconds * 40.0;
+            common_util::scroll(ScrollInfo {
+                held: logic_data.is_mouse_button_held(MouseButton::Left),
+                last_pos: &mut logic_data.app_data.extra.last_y_mouse_pos,
+                pos,
+                velocity: &mut logic_data.app_data.level_select_scroll_velocity,
+                scroll: &mut logic_data.app_data.level_select_scroll,
+                delta_seconds,
+                starting_level_select_scroll: STARTING_LEVEL_SELECT_SCROLL,
+                spacing: SPACING,
+                levels: LEVELS,
+                levels_per_row: LEVELS_PER_ROW,
+                extra_end_scroll: 50.0,
+            });
         }
         _ => {}
     }
