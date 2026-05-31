@@ -1,11 +1,20 @@
-use platform_editor_core::{component::{
-    BackButtonBase, BackButtonMode, Hold, level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase}, title::{TitleBase, button::ButtonBase}
-}, screen::{Screen, TransitionCall, TransitionData}};
-use sdl3::{mouse::MouseButton, render::{BlendMode, FPoint}};
+use platform_editor_core::{
+    component::{
+        BackButtonBase, BackButtonMode, Hold,
+        level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
+        title::{TitleBase, button::ButtonBase},
+    },
+    screen::{Screen, TransitionCall, TransitionData},
+};
+use sdl3::{
+    mouse::MouseButton,
+    render::{BlendMode, FPoint},
+};
 
 use crate::{
     logic::{Logic, LogicData},
-    render::{DrawResult, Render, RenderData}, util,
+    render::{DrawResult, Render, RenderData},
+    util,
 };
 
 pub mod level_select;
@@ -17,14 +26,24 @@ impl Render for BackButtonBase {
     fn render(&self, data: &mut RenderData) -> DrawResult {
         let scale_multiplier = 1.0 + (self.hold_time as f32 / 3_000_000_000.0);
         let size = BACK_BUTTON_INITIAL_RADIUS * 2.0 * scale_multiplier;
-        
+
         data.textures.back_button.set_blend_mode(BlendMode::Blend);
-        data.textures.back_button.set_alpha_mod((255.0 * (1.0 - data.transition_offset(1.0 / 10.0).max(0.0))) as u8);
-        
+        data.textures
+            .back_button
+            .set_alpha_mod((255.0 * (1.0 - data.transition_offset(1.0 / 10.0).max(0.0))) as u8);
+
         data.canvas.copy_ex(
-            &data.textures.back_button, None,
-            util::frect_from_center(FPoint::new(self.pos.0 as f32, self.pos.1 as f32), size, size),
-            0.0, None, false, false
+            &data.textures.back_button,
+            None,
+            util::frect_from_center(
+                FPoint::new(self.pos.0 as f32, self.pos.1 as f32),
+                size,
+                size,
+            ),
+            0.0,
+            None,
+            false,
+            false,
         )
     }
 }

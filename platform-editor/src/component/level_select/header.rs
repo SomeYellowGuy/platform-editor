@@ -50,7 +50,12 @@ impl Render for LevelSelectHeaderBase {
         data.canvas.copy_ex(
             &data.textures.level_select.stars,
             FRect::new(40.0, 0.0, 40.0, 40.0),
-            FRect::new((WIDTH / 2) as f32 + STAR_INFO_OFFSET, 7.0 - header_offset as f32, 70.0, 70.0),
+            FRect::new(
+                (WIDTH / 2) as f32 + STAR_INFO_OFFSET,
+                7.0 - header_offset as f32,
+                70.0,
+                70.0,
+            ),
             10.0,
             None,
             false,

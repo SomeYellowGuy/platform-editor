@@ -58,7 +58,7 @@ pub struct ComponentMap<C> {
     logic_priorities: HashMap<ComponentId, i32>,
 
     cached_render_ids: Vec<ComponentId>,
-    cached_logic_ids: Vec<ComponentId>
+    cached_logic_ids: Vec<ComponentId>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -76,14 +76,12 @@ impl<C> ComponentMap<C> {
             logic_priorities: HashMap::new(),
 
             cached_render_ids: Vec::new(),
-            cached_logic_ids: Vec::new()
+            cached_logic_ids: Vec::new(),
         }
     }
 
     /// Updates the inner-cached sorted ids in the map.
-    pub fn update_cache(
-        &mut self
-    ) {
+    pub fn update_cache(&mut self) {
         let mut cached_render_ids: Vec<_> = self.components.keys().cloned().collect();
         let priorities = self.priorities(ComponentMapQueryType::Render);
         cached_render_ids.sort_unstable_by_key(|s| *priorities.get(s).unwrap());
@@ -121,10 +119,10 @@ impl<C> ComponentMap<C> {
     /// Removes components whose key satisfies the given predicate, from this map (if any).
     pub fn remove_all(&mut self, predicate: impl Fn(ComponentId) -> bool) {
         let ids: Vec<_> = self
-        .components
-        .keys()
-        .filter_map(|k| predicate(*k).then_some(*k))
-        .collect();
+            .components
+            .keys()
+            .filter_map(|k| predicate(*k).then_some(*k))
+            .collect();
         for component in ids {
             self.remove(component);
         }
@@ -152,7 +150,9 @@ impl<C> ComponentMap<C> {
         &self,
         ty: ComponentMapQueryType,
     ) -> impl Iterator<Item = (ComponentId, &C)> {
-        self.sorted_ids(ty).into_iter().map(|i| (*i, &self.components[i]))
+        self.sorted_ids(ty)
+            .into_iter()
+            .map(|i| (*i, &self.components[i]))
     }
 
     /// Provides an [`Iterator`] with the provided priority type.
@@ -163,7 +163,10 @@ impl<C> ComponentMap<C> {
         &self,
         ty: ComponentMapQueryType,
     ) -> impl Iterator<Item = (ComponentId, &C)> {
-        self.sorted_ids(ty).into_iter().map(|i| (*i, &self.components[i])).rev()
+        self.sorted_ids(ty)
+            .into_iter()
+            .map(|i| (*i, &self.components[i]))
+            .rev()
     }
 
     /// Provides an [`Iterator`] with the provided priority type.
@@ -173,7 +176,7 @@ impl<C> ComponentMap<C> {
     pub fn ascending_iter_mut(
         &mut self,
         ty: ComponentMapQueryType,
-        mut f: impl FnMut(ComponentId, &mut C)
+        mut f: impl FnMut(ComponentId, &mut C),
     ) {
         let cloned: Vec<_> = self.sorted_ids(ty).into_iter().cloned().collect();
         for id in cloned {
@@ -188,7 +191,7 @@ impl<C> ComponentMap<C> {
     pub fn descending_iter_mut(
         &mut self,
         ty: ComponentMapQueryType,
-        mut f: impl FnMut(ComponentId, &mut C)
+        mut f: impl FnMut(ComponentId, &mut C),
     ) {
         let cloned: Vec<_> = self.sorted_ids(ty).into_iter().cloned().rev().collect();
         for id in cloned {

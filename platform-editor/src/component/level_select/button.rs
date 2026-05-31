@@ -40,7 +40,7 @@ impl Render for LevelSelectButtonBase {
         let mut pos = normal_pos(self, data.extracted_data.y_scroll);
         let t = data.transition_offset(1.8);
         pos.x += t * t;
-        
+
         let scale_multiplier = self.scale_multiplier();
 
         // If the button is currently held, add rotation.

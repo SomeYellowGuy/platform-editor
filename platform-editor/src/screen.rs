@@ -1,16 +1,23 @@
 use platform_editor_core::{
     component::{
-        BackButtonBase, BackButtonMode, ComponentId, level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase}, title::{
+        BackButtonBase, BackButtonMode, ComponentId,
+        level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
+        title::{
             TitleBase,
             button::{ButtonBase, ButtonType},
-        }
+        },
     },
     screen::Screen,
 };
 use sdl3::mouse::MouseButton;
 
 use crate::{
-    ComponentMap, LEVELS, NO_LOGIC_PRIORITY, WIDTH, component::{Component, level_select::{self, button::LEVELS_PER_ROW}}, logic::LogicData
+    ComponentMap, LEVELS, NO_LOGIC_PRIORITY, WIDTH,
+    component::{
+        Component,
+        level_select::{self, button::LEVELS_PER_ROW},
+    },
+    logic::LogicData,
 };
 
 /// The lnitial scroll value for the level select.
@@ -60,7 +67,15 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
                 NO_LOGIC_PRIORITY,
             );
 
-            map.insert(ComponentId::BackButton, Component::BackButton(BackButtonBase::new((WIDTH as i32 - 50, 45), BackButtonMode::BackToTitle)), 15, 0);
+            map.insert(
+                ComponentId::BackButton,
+                Component::BackButton(BackButtonBase::new(
+                    (WIDTH as i32 - 50, 45),
+                    BackButtonMode::BackToTitle,
+                )),
+                15,
+                0,
+            );
         }
         Screen::Level => {}
         Screen::Options => {}
@@ -77,7 +92,9 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
         Screen::LevelSelect => map.remove_all(|k| {
             matches!(
                 k,
-                ComponentId::LevelSelectButton(_) | ComponentId::LevelSelectHeader | ComponentId::BackButton
+                ComponentId::LevelSelectButton(_)
+                    | ComponentId::LevelSelectHeader
+                    | ComponentId::BackButton
             )
         }),
         Screen::Level => {}
