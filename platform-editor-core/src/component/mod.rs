@@ -40,6 +40,8 @@ impl Hold for BackButtonBase {
     }
 }
 
+pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ComponentId {
     Title,
@@ -82,11 +84,16 @@ impl<C> ComponentMap<C> {
 
     /// Updates the inner-cached sorted ids in the map.
     pub fn update_cache(&mut self) {
-        let mut cached_render_ids: Vec<_> = self.components.keys().cloned().collect();
+        let mut cached_render_ids: Vec<_> = self.render_priorities.keys().cloned().collect();
         let priorities = self.priorities(ComponentMapQueryType::Render);
         cached_render_ids.sort_unstable_by_key(|s| *priorities.get(s).unwrap());
 
-        let mut cached_logic_ids: Vec<_> = self.components.keys().cloned().collect();
+        let mut cached_logic_ids: Vec<_> = self
+        .logic_priorities
+        .iter()
+        .filter_map(|(k, v)| (*v != NO_LOGIC_PRIORITY).then_some(*k))
+        .collect();
+
         let priorities = self.priorities(ComponentMapQueryType::Logic);
         cached_logic_ids.sort_unstable_by_key(|s| *priorities.get(s).unwrap());
 
@@ -119,10 +126,10 @@ impl<C> ComponentMap<C> {
     /// Removes components whose key satisfies the given predicate, from this map (if any).
     pub fn remove_all(&mut self, predicate: impl Fn(ComponentId) -> bool) {
         let ids: Vec<_> = self
-            .components
-            .keys()
-            .filter_map(|k| predicate(*k).then_some(*k))
-            .collect();
+        .components
+        .keys()
+        .filter_map(|k| predicate(*k).then_some(*k))
+        .collect();
         for component in ids {
             self.remove(component);
         }
@@ -151,8 +158,8 @@ impl<C> ComponentMap<C> {
         ty: ComponentMapQueryType,
     ) -> impl Iterator<Item = (ComponentId, &C)> {
         self.sorted_ids(ty)
-            .into_iter()
-            .map(|i| (*i, &self.components[i]))
+        .into_iter()
+        .map(|i| (*i, &self.components[i]))
     }
 
     /// Provides an [`Iterator`] with the provided priority type.
@@ -164,9 +171,9 @@ impl<C> ComponentMap<C> {
         ty: ComponentMapQueryType,
     ) -> impl Iterator<Item = (ComponentId, &C)> {
         self.sorted_ids(ty)
-            .into_iter()
-            .map(|i| (*i, &self.components[i]))
-            .rev()
+        .into_iter()
+        .map(|i| (*i, &self.components[i]))
+        .rev()
     }
 
     /// Provides an [`Iterator`] with the provided priority type.
