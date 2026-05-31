@@ -1,5 +1,5 @@
 /// Represents a screen in the game.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
     Title,
     LevelSelect,
