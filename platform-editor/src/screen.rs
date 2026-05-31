@@ -65,6 +65,8 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
         Screen::Level => {}
         Screen::Options => {}
     }
+
+    map.update_cache();
 }
 
 pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
@@ -81,6 +83,8 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
         Screen::Level => {}
         Screen::Options => {}
     }
+
+    map.update_cache();
 }
 
 pub fn tick(screen: Screen, logic_data: &mut LogicData) {

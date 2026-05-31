@@ -319,9 +319,9 @@ impl App {
     ) {
         screen::tick(screen, logic_data);
 
-        for (_, component) in components.descending_iter_mut(ComponentMapQueryType::Logic) {
+        components.descending_iter_mut(ComponentMapQueryType::Logic, |_, component| {
             component.run_logic(logic_data);
-        }
+        });
     }
 
     fn render(
