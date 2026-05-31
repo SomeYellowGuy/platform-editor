@@ -1,12 +1,14 @@
 use platform_editor_core::{
-    common_util::{self, ScrollInfo}, component::{
+    common_util::{self, ScrollInfo},
+    component::{
         BackButtonBase, BackButtonMode, ComponentId,
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{
             TitleBase,
             button::{ButtonBase, ButtonType},
         },
-    }, screen::Screen
+    },
+    screen::Screen,
 };
 use sdl3::mouse::MouseButton;
 
@@ -14,7 +16,7 @@ use crate::{
     ComponentMap, LEVELS, NO_LOGIC_PRIORITY, WIDTH,
     component::{
         Component,
-        level_select::{button::{LEVELS_PER_ROW, SPACING}},
+        level_select::button::{LEVELS_PER_ROW, SPACING},
     },
     logic::LogicData,
 };

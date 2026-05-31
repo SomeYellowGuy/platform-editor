@@ -89,10 +89,10 @@ impl<C> ComponentMap<C> {
         cached_render_ids.sort_unstable_by_key(|s| *priorities.get(s).unwrap());
 
         let mut cached_logic_ids: Vec<_> = self
-        .logic_priorities
-        .iter()
-        .filter_map(|(k, v)| (*v != NO_LOGIC_PRIORITY).then_some(*k))
-        .collect();
+            .logic_priorities
+            .iter()
+            .filter_map(|(k, v)| (*v != NO_LOGIC_PRIORITY).then_some(*k))
+            .collect();
 
         let priorities = self.priorities(ComponentMapQueryType::Logic);
         cached_logic_ids.sort_unstable_by_key(|s| *priorities.get(s).unwrap());
@@ -126,10 +126,10 @@ impl<C> ComponentMap<C> {
     /// Removes components whose key satisfies the given predicate, from this map (if any).
     pub fn remove_all(&mut self, predicate: impl Fn(ComponentId) -> bool) {
         let ids: Vec<_> = self
-        .components
-        .keys()
-        .filter_map(|k| predicate(*k).then_some(*k))
-        .collect();
+            .components
+            .keys()
+            .filter_map(|k| predicate(*k).then_some(*k))
+            .collect();
         for component in ids {
             self.remove(component);
         }
@@ -158,8 +158,8 @@ impl<C> ComponentMap<C> {
         ty: ComponentMapQueryType,
     ) -> impl Iterator<Item = (ComponentId, &C)> {
         self.sorted_ids(ty)
-        .into_iter()
-        .map(|i| (*i, &self.components[i]))
+            .iter()
+            .map(|i| (*i, &self.components[i]))
     }
 
     /// Provides an [`Iterator`] with the provided priority type.
@@ -171,9 +171,9 @@ impl<C> ComponentMap<C> {
         ty: ComponentMapQueryType,
     ) -> impl Iterator<Item = (ComponentId, &C)> {
         self.sorted_ids(ty)
-        .into_iter()
-        .map(|i| (*i, &self.components[i]))
-        .rev()
+            .iter()
+            .map(|i| (*i, &self.components[i]))
+            .rev()
     }
 
     /// Provides an [`Iterator`] with the provided priority type.
@@ -185,7 +185,7 @@ impl<C> ComponentMap<C> {
         ty: ComponentMapQueryType,
         mut f: impl FnMut(ComponentId, &mut C),
     ) {
-        let cloned: Vec<_> = self.sorted_ids(ty).into_iter().cloned().collect();
+        let cloned: Vec<_> = self.sorted_ids(ty).to_vec();
         for id in cloned {
             f(id, self.components.get_mut(&id).unwrap());
         }
@@ -200,7 +200,7 @@ impl<C> ComponentMap<C> {
         ty: ComponentMapQueryType,
         mut f: impl FnMut(ComponentId, &mut C),
     ) {
-        let cloned: Vec<_> = self.sorted_ids(ty).into_iter().cloned().rev().collect();
+        let cloned: Vec<_> = self.sorted_ids(ty).iter().cloned().rev().collect();
         for id in cloned {
             f(id, self.components.get_mut(&id).unwrap());
         }

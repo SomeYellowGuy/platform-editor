@@ -164,7 +164,7 @@ impl Render for ButtonBase {
         let ExtractedFontTextureSet { top, bottom } = data.textures.title.texts.set(self.ty);
 
         draw_text_texture(
-            &bottom,
+            bottom,
             data.canvas,
             3,
             scale_multiplier,
@@ -172,7 +172,7 @@ impl Render for ButtonBase {
             horizontal_offset,
         )?;
         draw_text_texture(
-            &top,
+            top,
             data.canvas,
             0,
             scale_multiplier,
