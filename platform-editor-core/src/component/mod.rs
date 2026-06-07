@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::component::title::button::ButtonType;
 
+pub mod level;
 pub mod level_select;
 pub mod title;
 

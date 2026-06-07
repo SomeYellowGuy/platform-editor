@@ -99,13 +99,21 @@ pub type PlacedBlockTextures<'c> = platform_editor_core::textures::PlacedBlockTe
 pub type MovingPlacedBlockTextures<'c> = platform_editor_core::textures::MovingPlacedBlockTextures<Texture<'c>>;
 
 pub struct LevelTextures<'c> {
-    pub tiles: TileTextures<'c>
+    pub tiles: TileTextures<'c>,
+
+    pub player: Texture<'c>,
+    pub flags: [Texture<'c>; 9]
 }
 
 impl<'c> LevelTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
+        let flags: Vec<_> = (1..=9).into_iter()
+            .filter_map(|n| load_texture(creator, &format!("assets/gfx/level/flag/{n}.png")))
+            .collect();
         Some(Self {
-            tiles: Self::load_tile_textures(creator)?
+            tiles: Self::load_tile_textures(creator)?,
+            player: load_texture(creator, "assets/gfx/level/player.png")?,
+            flags: flags.try_into().ok()?
         })
     }
 
