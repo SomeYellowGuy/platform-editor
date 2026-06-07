@@ -1,5 +1,7 @@
 //! Common utility methods for Platform Editor implementations.
 
+use std::ops::{Add, Div, Mul, Neg, Sub};
+
 /// Returns the number of digits of a `usize`.
 pub fn digit_count(int: usize) -> usize {
     if int == 0 {
@@ -58,4 +60,118 @@ pub fn scroll(info: ScrollInfo<'_>) {
         *info.last_pos = None;
     }
     *info.scroll += *info.velocity * info.delta_seconds * 40.0;
+}
+
+/// A two-dimensional vector of some type `T`.
+#[derive(Debug, Clone, Copy)]
+pub struct Pos<T> {
+    pub x: T,
+    pub y: T
+}
+
+impl<T> Pos<T> {
+    /// Creates a [`Pos`] with two components.
+    #[must_use]
+    pub const fn new(x: T, y: T) -> Self {
+        Self { x, y }
+    }
+}
+
+impl<T> From<(T, T)> for Pos<T> {
+    fn from(value: (T, T)) -> Self {
+        Self {
+            x: value.0,
+            y: value.1,
+        }
+    }
+}
+
+impl<T> From<Pos<T>> for (T, T) {
+    fn from(value: Pos<T>) -> Self {
+        (value.x, value.y)
+    }
+}
+
+impl<T: Add<Output = T>> Add for Pos<T> {
+    type Output = Pos<T>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl<T: Sub<Output = T>> Sub for Pos<T> {
+    type Output = Pos<T>;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
+        }
+    }
+}
+
+impl<T: Mul<U, Output = T>, U: Clone> Mul<U> for Pos<T> {
+    type Output = Pos<T>;
+
+    fn mul(self, rhs: U) -> Self::Output {
+        Self {
+            x: self.x * rhs.clone(),
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl<T: Div<U, Output = T>, U: Clone> Div<U> for Pos<T> {
+    type Output = Pos<T>;
+
+    fn div(self, rhs: U) -> Self::Output {
+        Self {
+            x: self.x / rhs.clone(),
+            y: self.y / rhs,
+        }
+    }
+}
+
+impl<T: Neg<Output = T>> Neg for Pos<T> {
+    type Output = Pos<T>;
+
+    fn neg(self) -> Self::Output {
+        Self {
+            x: -self.x,
+            y: -self.y
+        }
+    }
+}
+
+macro_rules! assign {
+    ($tr:ty, $func:ident, $op_tr:ident, $op:tt) => {
+        impl<T: Clone + $op_tr<Output = T>> $tr for Pos<T> {
+            fn $func(&mut self, other: Self) {
+                *self = Self {
+                    x: self.x.clone() $op other.x,
+                    y: self.y.clone() $op other.y,
+                };
+            }
+        }
+    };
+}
+
+assign!(std::ops::AddAssign, add_assign, Add, +);
+assign!(std::ops::SubAssign, sub_assign, Sub, -);
+assign!(std::ops::MulAssign, mul_assign, Mul, *);
+assign!(std::ops::DivAssign, div_assign, Div, /);
+
+pub type FPos = Pos<f32>;
+pub type IPos = Pos<i32>;
+
+#[derive(Debug, Clone, Copy)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right
 }

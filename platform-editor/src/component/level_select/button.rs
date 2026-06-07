@@ -1,10 +1,9 @@
 use platform_editor_core::{
     common_util,
-    component::{Hold, level_select::button::LevelSelectButtonBase},
+    component::{Hold, level_select::button::LevelSelectButtonBase}, screen::{Screen, TransitionCall, TransitionData},
 };
 use sdl3::{
-    rect::Rect,
-    render::{FPoint, FRect},
+    mouse::MouseButton, rect::Rect, render::{FPoint, FRect}
 };
 
 use crate::{
@@ -122,6 +121,15 @@ impl Logic for LevelSelectButtonBase {
             SIDE,
         ));
         let hovered = hitbox.contains_point(data.mouse_pos());
+
+        if data.is_mouse_button_up(MouseButton::Left) && hovered {
+            // Play the level.
+            data.set_transition_call(TransitionCall::Start(TransitionData::new(
+                800_000_000,
+                800_000_000,
+                Screen::Level,
+            )));
+        }
 
         if !hovered && self.hold_time > Self::MAX_DISPLAY_HOLD_TIME {
             self.hold_time = Self::MAX_DISPLAY_HOLD_TIME

@@ -6,8 +6,10 @@ use crate::options::Options;
 
 pub mod common_util;
 pub mod component;
+pub mod level;
 pub mod options;
 pub mod screen;
+pub mod textures;
 
 /// Stores "save data" in the game.
 /// `E` is the extra, platform-specific data.

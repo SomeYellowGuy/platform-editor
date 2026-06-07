@@ -14,10 +14,20 @@ pub struct Textures<'c> {
 
     pub title: TitleTextures<'c>,
     pub level_select: LevelSelectTextures<'c>,
+    pub level: LevelTextures<'c>
 }
 
 fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> Option<Texture<'c>> {
-    creator.load_texture(name).ok()
+    if let Ok(t) = creator.load_texture(name) {
+        Some(t)
+    } else {
+        println!("Coul not load texture: {name}");
+        None
+    }
+}
+
+fn load_tile_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> Option<Texture<'c>> {
+    load_texture(creator, &("assets/gfx/tiles/".to_string() + name))
 }
 
 impl<'c> Textures<'c> {
@@ -33,6 +43,7 @@ impl<'c> Textures<'c> {
                 texts: ExtractedFontTextureSets::new(creator, font)?,
             },
             level_select: LevelSelectTextures::load(creator, font)?,
+            level: LevelTextures::load(creator)?,
         })
     }
 }
@@ -78,6 +89,76 @@ impl<'c> LevelSelectTextures<'c> {
             digits: load_texture(creator, "assets/gfx/level_select/digits.png")?,
             locked: load_texture(creator, "assets/gfx/level_select/locked.png")?,
             header_text: Self::header_text(creator, font)?,
+        })
+    }
+}
+
+pub type TileTextures<'c> = platform_editor_core::textures::TileTextures<Texture<'c>>;
+pub type DirectionalTextures<'c> = platform_editor_core::textures::DirectionalTextures<Texture<'c>>;
+pub type PlacedBlockTextures<'c> = platform_editor_core::textures::PlacedBlockTextures<Texture<'c>>;
+pub type MovingPlacedBlockTextures<'c> = platform_editor_core::textures::MovingPlacedBlockTextures<Texture<'c>>;
+
+pub struct LevelTextures<'c> {
+    pub tiles: TileTextures<'c>
+}
+
+impl<'c> LevelTextures<'c> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
+        Some(Self {
+            tiles: Self::load_tile_textures(creator)?
+        })
+    }
+
+    pub fn load_tile_textures(creator: &'c TextureCreator<WindowContext>) -> Option<TileTextures<'c>> {
+        Some(TileTextures {
+            spikes: DirectionalTextures::new(
+                Some(load_tile_texture(creator, "spike_up.png")?),
+                Some(load_tile_texture(creator, "spike_down.png")?),
+                None,
+                None
+            ),
+            shooters: DirectionalTextures::new(
+                Some(load_tile_texture(creator, "shooter_up.png")?),
+                None,
+                Some(load_tile_texture(creator, "shooter_left.png")?),
+                Some(load_tile_texture(creator, "shooter_right.png")?)
+            ),
+            placed_blocks: PlacedBlockTextures {
+                moving: MovingPlacedBlockTextures {
+                    single: DirectionalTextures::new(
+                        Some(load_tile_texture(creator, "placedblock_m_up.png")?),
+                        None,
+                        Some(load_tile_texture(creator, "placedblock_m_left.png")?),
+                        Some(load_tile_texture(creator, "placedblock_m_right.png")?)
+                    ),
+                    vertical: load_tile_texture(creator, "placedblock_m_vertical.png")?,
+                    horizontal: load_tile_texture(creator, "placedblock_m_horizontal.png")?,
+                },
+                permanent: load_tile_texture(creator, "placedblock.png")?,
+                timed: [
+                    load_tile_texture(creator, "placedblock_t1.png")?,
+                    load_tile_texture(creator, "placedblock_t2.png")?,
+                    load_tile_texture(creator, "placedblock_t3.png")?,
+                    load_tile_texture(creator, "placedblock_t4.png")?,
+                    load_tile_texture(creator, "placedblock_t5.png")?
+                ],
+            },
+            grass: [
+                load_tile_texture(creator, "grass_g.png")?,
+                load_tile_texture(creator, "grass_g1.png")?,
+                load_tile_texture(creator, "grass_g2.png")?,
+                load_tile_texture(creator, "grass_g3.png")?
+            ],
+            dirt: [
+                load_tile_texture(creator, "grass_d.png")?,
+                load_tile_texture(creator, "grass_d1.png")?,
+                load_tile_texture(creator, "grass_d2.png")?,
+                load_tile_texture(creator, "grass_d3.png")?,
+                load_tile_texture(creator, "grass_d4.png")?
+            ],
+            top_slab: load_tile_texture(creator, "block_slab_r.png")?,
+            bottom_slab: load_tile_texture(creator, "block_slab.png")?,
+            block: load_tile_texture(creator, "block.png")?,
         })
     }
 }
