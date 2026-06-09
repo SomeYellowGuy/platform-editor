@@ -119,6 +119,7 @@ impl<'c> LevelTextures<'c> {
 
     pub fn load_tile_textures(creator: &'c TextureCreator<WindowContext>) -> Option<TileTextures<'c>> {
         Some(TileTextures {
+            empty: load_tile_texture(creator, "empty.png")?,
             spikes: DirectionalTextures::new(
                 Some(load_tile_texture(creator, "spike_up.png")?),
                 Some(load_tile_texture(creator, "spike_down.png")?),

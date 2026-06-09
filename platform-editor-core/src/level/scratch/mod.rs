@@ -84,8 +84,7 @@ impl StoredScratchTile {
         }
     }
 
-    pub const fn tiles_from_str<'a>(str: &'a str) -> [StoredScratchTile; StoredScratchLevel::TILE_COUNT] {
-        let bytes = str.as_bytes();
+    pub const fn tiles_from_bytes<'a>(bytes: &'a [u8; StoredScratchLevel::TILE_COUNT]) -> [StoredScratchTile; StoredScratchLevel::TILE_COUNT] {
         let mut out = [StoredScratchTile::Empty; StoredScratchLevel::TILE_COUNT];
 
         let mut i = 0;
@@ -121,7 +120,7 @@ impl StoredScratchTile {
             },
             Self::Dirt => {
                 let seed = Self::tile_seed(index + 1);
-                Some(Tile::Grass(
+                Some(Tile::Dirt(
                     if seed < 5 {
                         seed
                     } else {
@@ -137,6 +136,7 @@ impl StoredScratchTile {
 }
 
 // An original Scratch level, which can be loaded in the game.
+#[derive(Debug, Clone, Copy)]
 pub struct StoredScratchLevel {
     pub tiles: [StoredScratchTile; StoredScratchLevel::WIDTH * StoredScratchLevel::HEIGHT],
     pub collectibles: &'static [StoredScratchCollectible],
@@ -151,11 +151,13 @@ impl StoredScratchLevel {
     pub const TILE_COUNT: usize = Self::WIDTH * Self::HEIGHT;
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct StoredScratchCollectible {
     pub pos: FPos,
     pub kind: ScratchCollectible
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum ScratchCollectible {
     Orb,
     Key(i8)

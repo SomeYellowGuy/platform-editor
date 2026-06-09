@@ -4,3 +4,11 @@ use crate::level::LevelState;
 pub struct BoardBase {
     pub state: LevelState
 }
+
+impl BoardBase {
+    pub fn new() -> Self {
+        Self {
+            state: LevelState::new()
+        }
+    }
+}

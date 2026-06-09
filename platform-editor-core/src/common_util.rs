@@ -63,7 +63,7 @@ pub fn scroll(info: ScrollInfo<'_>) {
 }
 
 /// A two-dimensional vector of some type `T`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Pos<T> {
     pub x: T,
     pub y: T

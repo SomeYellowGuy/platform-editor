@@ -124,6 +124,7 @@ impl Logic for LevelSelectButtonBase {
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             // Play the level.
+            data.app_data.level.playing_level = self.level;
             data.set_transition_call(TransitionCall::Start(TransitionData::new(
                 800_000_000,
                 800_000_000,

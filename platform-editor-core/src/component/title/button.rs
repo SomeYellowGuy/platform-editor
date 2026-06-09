@@ -1,4 +1,4 @@
-use crate::{component::Hold, screen::Screen};
+use crate::{AppData, component::Hold, screen::Screen};
 
 /// A struct providing button behavior.
 pub struct ButtonBase {
@@ -58,6 +58,20 @@ impl ButtonType {
             Self::Play => Screen::Level,
             Self::LevelSelect => Screen::LevelSelect,
             Self::Options => Screen::Options,
+        }
+    }
+
+    pub fn before_transition<E: Default>(self, data: &mut AppData<E>) {
+        if self == Self::Play {
+            // Check the first unbeat level.
+            let mut i = 0;
+            while i < 30 {
+                if data.level.stars[i] == 0 {
+                    break
+                }
+                i += 1;
+            }
+            data.level.playing_level = i
         }
     }
 }

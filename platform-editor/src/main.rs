@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use platform_editor_core::LevelSave;
 use platform_editor_core::component::ComponentMapQueryType;
 use platform_editor_core::options::Options;
 use platform_editor_core::screen::{Screen, ScreenManager, TransitionCall};
@@ -29,9 +30,6 @@ pub mod util;
 pub const WIDTH: u32 = 1280;
 /// The target height of the window.
 pub const HEIGHT: u32 = 720;
-
-/// The total number of levels in the game.
-pub const LEVELS: usize = 30;
 
 /// A priority for components with no logic.
 pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
@@ -153,6 +151,7 @@ impl App {
             extra: ExtraAppData::default(),
             level_select_scroll: screen::STARTING_LEVEL_SELECT_SCROLL,
             level_select_scroll_velocity: 0.0,
+            level: LevelSave::new()
         };
 
         let mut components = ComponentMap::new();

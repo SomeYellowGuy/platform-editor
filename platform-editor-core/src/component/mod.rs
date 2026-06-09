@@ -50,6 +50,9 @@ pub enum ComponentId {
     LevelSelectButton(usize),
     LevelSelectHeader,
     BackButton,
+    Board,
+    
+    Other(usize)
 }
 
 /// A map storing each component (via an ID) and giving each one a priority value to be rendered.
@@ -83,7 +86,7 @@ impl<C> ComponentMap<C> {
         }
     }
 
-    /// Updates the inner-cached sorted ids in the map.
+    /// Updates the inner-cached sorted IDs in the map.
     pub fn update_cache(&mut self) {
         let mut cached_render_ids: Vec<_> = self.render_priorities.keys().cloned().collect();
         let priorities = self.priorities(ComponentMapQueryType::Render);

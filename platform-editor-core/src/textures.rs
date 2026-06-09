@@ -1,4 +1,4 @@
-use crate::common_util::Direction;
+use crate::{common_util::Direction, level::Tile};
 
 /// A structure that may or may not hold a texture or image for each direction.
 pub struct DirectionalTextures<T> {
@@ -41,6 +41,8 @@ pub struct MovingPlacedBlockTextures<T> {
 }
 
 pub struct TileTextures<T> {
+    pub empty: T,
+
     pub spikes: DirectionalTextures<T>,
     pub shooters: DirectionalTextures<T>,
     pub placed_blocks: PlacedBlockTextures<T>,
@@ -49,4 +51,28 @@ pub struct TileTextures<T> {
     pub top_slab: T,
     pub bottom_slab: T,
     pub block: T
+}
+
+impl<T> TileTextures<T> {
+    pub fn texture_from_tile(&self, tile: &Tile) -> Option<&T> {
+        match tile {
+            Tile::Empty => None,
+            Tile::Block => Some(&self.block),
+            Tile::TopSlab => Some(&self.top_slab),
+            Tile::BottomSlab => Some(&self.bottom_slab),
+            Tile::Grass(i) => Some(&self.grass[*i]),
+            Tile::Dirt(i) => Some(&self.dirt[*i]),
+            Tile::PlacedBlock => Some(&self.placed_blocks.permanent),
+            Tile::PlacedTimedBlock(t) => {
+                let shown = t.floor() as usize;
+                if shown < self.placed_blocks.timed.len() {
+                    Some(&self.placed_blocks.timed[shown])
+                } else {
+                    None
+                }
+            },
+            Tile::Shooter(direction) => self.shooters.get(*direction),
+            Tile::Spike(direction) => self.spikes.get(*direction),
+        }
+    }
 }

@@ -1,8 +1,6 @@
 use platform_editor_core::{
     component::{
-        BackButtonBase, BackButtonMode, Hold,
-        level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
-        title::{TitleBase, button::ButtonBase},
+        BackButtonBase, BackButtonMode, Hold, level::board::BoardBase, level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase}, title::{TitleBase, button::ButtonBase}
     },
     screen::{Screen, TransitionCall, TransitionData},
 };
@@ -17,6 +15,7 @@ use crate::{
     util,
 };
 
+pub mod level;
 pub mod level_select;
 pub mod title;
 
@@ -103,6 +102,8 @@ pub enum Component {
 
     LevelSelectButton(LevelSelectButtonBase),
     LevelSelectHeader(LevelSelectHeaderBase),
+
+    Board(BoardBase),
 }
 
 impl_components! {
@@ -112,5 +113,7 @@ impl_components! {
     Button,
 
     LevelSelectButton,
-    LevelSelectHeader
+    LevelSelectHeader,
+
+    Board
 }

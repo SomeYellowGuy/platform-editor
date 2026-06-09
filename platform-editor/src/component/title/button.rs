@@ -193,6 +193,7 @@ impl Logic for ButtonBase {
         self.update_hold_time(data.delta_time, hovered);
 
         if hovered && data.is_mouse_button_up(MouseButton::Left) {
+            self.ty.before_transition(data.app_data);
             data.set_transition_call(TransitionCall::Start(TransitionData::new(
                 800_000_000,
                 700_000_000,

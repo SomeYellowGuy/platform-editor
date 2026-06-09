@@ -1,19 +1,15 @@
 use platform_editor_core::{
-    common_util::{self, ScrollInfo},
-    component::{
-        BackButtonBase, BackButtonMode, ComponentId,
-        level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
-        title::{
+    common_util::{self, ScrollInfo}, component::{
+        BackButtonBase, BackButtonMode, ComponentId, level::board::BoardBase, level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase}, title::{
             TitleBase,
             button::{ButtonBase, ButtonType},
-        },
-    },
-    screen::Screen,
+        }
+    }, level::scratch::levels::LEVEL_COUNT, screen::Screen
 };
 use sdl3::mouse::MouseButton;
 
 use crate::{
-    ComponentMap, LEVELS, NO_LOGIC_PRIORITY, WIDTH,
+    ComponentMap, NO_LOGIC_PRIORITY, WIDTH,
     component::{
         Component,
         level_select::button::{LEVELS_PER_ROW, SPACING},
@@ -52,7 +48,7 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
                 logic_data.app_data.level_select_scroll_velocity = 0.0;
             }
 
-            for level in 0..LEVELS {
+            for level in 0..LEVEL_COUNT {
                 map.insert(
                     ComponentId::LevelSelectButton(level),
                     Component::LevelSelectButton(LevelSelectButtonBase::new(level)),
@@ -78,7 +74,17 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
                 0,
             );
         }
-        Screen::Level => {}
+        Screen::Level => {
+            let mut base = BoardBase::new();
+            let level = logic_data.map_or(0, |l| l.app_data.level.playing_level);
+            base.state.load_scratch_level(level);
+            map.insert(
+                ComponentId::Board,
+                Component::Board(base),
+                10,
+                0,
+            );
+        }
         Screen::Options => {}
     }
 
@@ -98,7 +104,9 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
                     | ComponentId::BackButton
             )
         }),
-        Screen::Level => {}
+        Screen::Level => {
+            map.remove_all(|k| matches!(k, ComponentId::Board))
+        }
         Screen::Options => {}
     }
 
@@ -120,7 +128,7 @@ pub fn tick(screen: Screen, logic_data: &mut LogicData) {
                 delta_seconds,
                 starting_level_select_scroll: STARTING_LEVEL_SELECT_SCROLL,
                 spacing: SPACING,
-                levels: LEVELS,
+                levels: LEVEL_COUNT,
                 levels_per_row: LEVELS_PER_ROW,
                 extra_end_scroll: 50.0,
             });
