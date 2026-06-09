@@ -51,8 +51,8 @@ pub enum ComponentId {
     LevelSelectHeader,
     BackButton,
     Board,
-    
-    Other(usize)
+
+    Other(usize),
 }
 
 /// A map storing each component (via an ID) and giving each one a priority value to be rendered.

@@ -64,12 +64,12 @@ pub fn scroll(info: ScrollInfo<'_>) {
 
 /// A two-dimensional vector of some type `T`.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Pos<T> {
+pub struct Vec2<T> {
     pub x: T,
-    pub y: T
+    pub y: T,
 }
 
-impl<T> Pos<T> {
+impl<T> Vec2<T> {
     /// Creates a [`Pos`] with two components.
     #[must_use]
     pub const fn new(x: T, y: T) -> Self {
@@ -77,7 +77,7 @@ impl<T> Pos<T> {
     }
 }
 
-impl<T> From<(T, T)> for Pos<T> {
+impl<T> From<(T, T)> for Vec2<T> {
     fn from(value: (T, T)) -> Self {
         Self {
             x: value.0,
@@ -86,14 +86,14 @@ impl<T> From<(T, T)> for Pos<T> {
     }
 }
 
-impl<T> From<Pos<T>> for (T, T) {
-    fn from(value: Pos<T>) -> Self {
+impl<T> From<Vec2<T>> for (T, T) {
+    fn from(value: Vec2<T>) -> Self {
         (value.x, value.y)
     }
 }
 
-impl<T: Add<Output = T>> Add for Pos<T> {
-    type Output = Pos<T>;
+impl<T: Add<Output = T>> Add for Vec2<T> {
+    type Output = Vec2<T>;
 
     fn add(self, rhs: Self) -> Self::Output {
         Self {
@@ -103,8 +103,8 @@ impl<T: Add<Output = T>> Add for Pos<T> {
     }
 }
 
-impl<T: Sub<Output = T>> Sub for Pos<T> {
-    type Output = Pos<T>;
+impl<T: Sub<Output = T>> Sub for Vec2<T> {
+    type Output = Vec2<T>;
 
     fn sub(self, rhs: Self) -> Self::Output {
         Self {
@@ -114,8 +114,8 @@ impl<T: Sub<Output = T>> Sub for Pos<T> {
     }
 }
 
-impl<T: Mul<U, Output = T>, U: Clone> Mul<U> for Pos<T> {
-    type Output = Pos<T>;
+impl<T: Mul<U, Output = T>, U: Clone> Mul<U> for Vec2<T> {
+    type Output = Vec2<T>;
 
     fn mul(self, rhs: U) -> Self::Output {
         Self {
@@ -125,8 +125,8 @@ impl<T: Mul<U, Output = T>, U: Clone> Mul<U> for Pos<T> {
     }
 }
 
-impl<T: Div<U, Output = T>, U: Clone> Div<U> for Pos<T> {
-    type Output = Pos<T>;
+impl<T: Div<U, Output = T>, U: Clone> Div<U> for Vec2<T> {
+    type Output = Vec2<T>;
 
     fn div(self, rhs: U) -> Self::Output {
         Self {
@@ -136,20 +136,20 @@ impl<T: Div<U, Output = T>, U: Clone> Div<U> for Pos<T> {
     }
 }
 
-impl<T: Neg<Output = T>> Neg for Pos<T> {
-    type Output = Pos<T>;
+impl<T: Neg<Output = T>> Neg for Vec2<T> {
+    type Output = Vec2<T>;
 
     fn neg(self) -> Self::Output {
         Self {
             x: -self.x,
-            y: -self.y
+            y: -self.y,
         }
     }
 }
 
 macro_rules! assign {
     ($tr:ty, $func:ident, $op_tr:ident, $op:tt) => {
-        impl<T: Clone + $op_tr<Output = T>> $tr for Pos<T> {
+        impl<T: Clone + $op_tr<Output = T>> $tr for Vec2<T> {
             fn $func(&mut self, other: Self) {
                 *self = Self {
                     x: self.x.clone() $op other.x,
@@ -165,13 +165,75 @@ assign!(std::ops::SubAssign, sub_assign, Sub, -);
 assign!(std::ops::MulAssign, mul_assign, Mul, *);
 assign!(std::ops::DivAssign, div_assign, Div, /);
 
-pub type FPos = Pos<f32>;
-pub type IPos = Pos<i32>;
+pub type Vec2f = Vec2<f32>;
+pub type Vec2i = Vec2<i32>;
 
-#[derive(Debug, Clone, Copy)]
+/// A structure representing an axis-aligned rectangle in space.
+///
+/// `pos` is the rectangle's top left vertex,
+/// while `dimensions` represents the rectangle's dimensions.
+#[derive(Debug, Copy, Clone)]
+pub struct Rect {
+    pub pos: Vec2f,
+    pub dimensions: Vec2f,
+}
+
+impl Rect {
+    /// Creates a [`Rect`] with the provided top-left position vector and dimensions.
+    #[must_use]
+    pub const fn new(pos: Vec2f, dimensions: Vec2f) -> Self {
+        Self { pos, dimensions }
+    }
+
+    /// Creates a [`Rect`] with the provided center position vector and dimensions.
+    #[must_use]
+    pub fn from_center(center: Vec2f, dimensions: Vec2f) -> Self {
+        Self::new(center - dimensions / 2.0, dimensions)
+    }
+
+    /// Creates a [`Rect`] with the provided top-left position vector, width and height.
+    #[must_use]
+    pub const fn from_dimensions(pos: Vec2f, width: f32, height: f32) -> Self {
+        Self::new(pos, Vec2f::new(width, height))
+    }
+
+    /// Creates a [`Rect`] with the provided top-left coordinates, width and height.
+    #[must_use]
+    pub const fn from_xy_and_dimensions(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self::from_dimensions(Vec2f::new(x, y), width, height)
+    }
+
+    /// Returns whether this `Rect` contains the given point.
+    #[must_use]
+    pub fn contains(self, point: Vec2f) -> bool {
+        point.x > self.pos.x
+            && point.x < self.pos.x + self.dimensions.x
+            && point.y > self.pos.y
+            && point.y < self.pos.y + self.dimensions.y
+    }
+
+    /// Returns whether this `Rect` intersects with the other provided `Rect`.
+    #[must_use]
+    pub fn intersects(self, other: Self) -> bool {
+        !(self.pos.x > other.pos.x + other.dimensions.x
+            || self.pos.x + self.dimensions.x < other.pos.x
+            || self.pos.y > other.pos.y + other.dimensions.y
+            || self.pos.y + self.dimensions.y < other.pos.y)
+    }
+
+    /// Returns whether this `Rect` completely contains the given `Rect`.
+    pub fn contains_rect(self, other: Self) -> bool {
+        self.pos.x <= other.pos.x
+            && self.pos.y <= other.pos.y
+            && self.pos.x + self.dimensions.x >= other.pos.x + other.dimensions.x
+            && self.pos.y + self.dimensions.y >= other.pos.y + other.dimensions.y
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Up,
     Down,
     Left,
-    Right
+    Right,
 }

@@ -67,7 +67,7 @@ impl ButtonType {
             let mut i = 0;
             while i < 30 {
                 if data.level.stars[i] == 0 {
-                    break
+                    break;
                 }
                 i += 1;
             }

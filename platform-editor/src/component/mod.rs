@@ -1,6 +1,9 @@
 use platform_editor_core::{
     component::{
-        BackButtonBase, BackButtonMode, Hold, level::board::BoardBase, level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase}, title::{TitleBase, button::ButtonBase}
+        BackButtonBase, BackButtonMode, Hold,
+        level::board::BoardBase,
+        level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
+        title::{TitleBase, button::ButtonBase},
     },
     screen::{Screen, TransitionCall, TransitionData},
 };

@@ -2,20 +2,13 @@ use crate::{common_util::Direction, level::Tile};
 
 /// A structure that may or may not hold a texture or image for each direction.
 pub struct DirectionalTextures<T> {
-    textures: [Option<T>; 4]
+    textures: [Option<T>; 4],
 }
 
 impl<T> DirectionalTextures<T> {
-    pub fn new(
-        up: Option<T>,
-        down: Option<T>,
-        left: Option<T>,
-        right: Option<T>
-    ) -> Self {
+    pub fn new(up: Option<T>, down: Option<T>, left: Option<T>, right: Option<T>) -> Self {
         Self {
-            textures: [
-                up, down, left, right
-            ]
+            textures: [up, down, left, right],
         }
     }
 
@@ -31,7 +24,7 @@ impl<T> DirectionalTextures<T> {
 pub struct PlacedBlockTextures<T> {
     pub moving: MovingPlacedBlockTextures<T>,
     pub permanent: T,
-    pub timed: [T; 5]
+    pub timed: [T; 5],
 }
 
 pub struct MovingPlacedBlockTextures<T> {
@@ -50,7 +43,7 @@ pub struct TileTextures<T> {
     pub dirt: [T; 5],
     pub top_slab: T,
     pub bottom_slab: T,
-    pub block: T
+    pub block: T,
 }
 
 impl<T> TileTextures<T> {
@@ -70,7 +63,7 @@ impl<T> TileTextures<T> {
                 } else {
                     None
                 }
-            },
+            }
             Tile::Shooter(direction) => self.shooters.get(*direction),
             Tile::Spike(direction) => self.spikes.get(*direction),
         }

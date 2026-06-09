@@ -23,13 +23,13 @@ pub struct AppData<E: Default> {
 
     pub extra: E,
 
-    pub level: LevelSave
+    pub level: LevelSave,
 }
 
 pub struct LevelSave {
     pub beat_levels: usize,
     pub playing_level: usize,
-    pub stars: [u8; LEVEL_COUNT]
+    pub stars: [u8; LEVEL_COUNT],
 }
 
 impl LevelSave {
@@ -37,7 +37,13 @@ impl LevelSave {
         Self {
             beat_levels: 0,
             playing_level: 0,
-            stars: [0; LEVEL_COUNT]
+            stars: [0; LEVEL_COUNT],
         }
+    }
+}
+
+impl Default for LevelSave {
+    fn default() -> Self {
+        Self::new()
     }
 }

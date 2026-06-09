@@ -14,7 +14,7 @@ pub struct Textures<'c> {
 
     pub title: TitleTextures<'c>,
     pub level_select: LevelSelectTextures<'c>,
-    pub level: LevelTextures<'c>
+    pub level: LevelTextures<'c>,
 }
 
 fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> Option<Texture<'c>> {
@@ -26,7 +26,10 @@ fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> O
     }
 }
 
-fn load_tile_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> Option<Texture<'c>> {
+fn load_tile_texture<'c>(
+    creator: &'c TextureCreator<WindowContext>,
+    name: &str,
+) -> Option<Texture<'c>> {
     load_texture(creator, &("assets/gfx/tiles/".to_string() + name))
 }
 
@@ -96,41 +99,44 @@ impl<'c> LevelSelectTextures<'c> {
 pub type TileTextures<'c> = platform_editor_core::textures::TileTextures<Texture<'c>>;
 pub type DirectionalTextures<'c> = platform_editor_core::textures::DirectionalTextures<Texture<'c>>;
 pub type PlacedBlockTextures<'c> = platform_editor_core::textures::PlacedBlockTextures<Texture<'c>>;
-pub type MovingPlacedBlockTextures<'c> = platform_editor_core::textures::MovingPlacedBlockTextures<Texture<'c>>;
+pub type MovingPlacedBlockTextures<'c> =
+    platform_editor_core::textures::MovingPlacedBlockTextures<Texture<'c>>;
 
 pub struct LevelTextures<'c> {
     pub tiles: TileTextures<'c>,
 
     pub player: Texture<'c>,
-    pub flags: [Texture<'c>; 9]
+    pub flags: [Texture<'c>; 9],
 }
 
 impl<'c> LevelTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
-        let flags: Vec<_> = (1..=9).into_iter()
+        let flags: Vec<_> = (1..=9)
             .filter_map(|n| load_texture(creator, &format!("assets/gfx/level/flag/{n}.png")))
             .collect();
         Some(Self {
             tiles: Self::load_tile_textures(creator)?,
             player: load_texture(creator, "assets/gfx/level/player.png")?,
-            flags: flags.try_into().ok()?
+            flags: flags.try_into().ok()?,
         })
     }
 
-    pub fn load_tile_textures(creator: &'c TextureCreator<WindowContext>) -> Option<TileTextures<'c>> {
+    pub fn load_tile_textures(
+        creator: &'c TextureCreator<WindowContext>,
+    ) -> Option<TileTextures<'c>> {
         Some(TileTextures {
             empty: load_tile_texture(creator, "empty.png")?,
             spikes: DirectionalTextures::new(
                 Some(load_tile_texture(creator, "spike_up.png")?),
                 Some(load_tile_texture(creator, "spike_down.png")?),
                 None,
-                None
+                None,
             ),
             shooters: DirectionalTextures::new(
                 Some(load_tile_texture(creator, "shooter_up.png")?),
                 None,
                 Some(load_tile_texture(creator, "shooter_left.png")?),
-                Some(load_tile_texture(creator, "shooter_right.png")?)
+                Some(load_tile_texture(creator, "shooter_right.png")?),
             ),
             placed_blocks: PlacedBlockTextures {
                 moving: MovingPlacedBlockTextures {
@@ -138,7 +144,7 @@ impl<'c> LevelTextures<'c> {
                         Some(load_tile_texture(creator, "placedblock_m_up.png")?),
                         None,
                         Some(load_tile_texture(creator, "placedblock_m_left.png")?),
-                        Some(load_tile_texture(creator, "placedblock_m_right.png")?)
+                        Some(load_tile_texture(creator, "placedblock_m_right.png")?),
                     ),
                     vertical: load_tile_texture(creator, "placedblock_m_vertical.png")?,
                     horizontal: load_tile_texture(creator, "placedblock_m_horizontal.png")?,
@@ -149,21 +155,21 @@ impl<'c> LevelTextures<'c> {
                     load_tile_texture(creator, "placedblock_t2.png")?,
                     load_tile_texture(creator, "placedblock_t3.png")?,
                     load_tile_texture(creator, "placedblock_t4.png")?,
-                    load_tile_texture(creator, "placedblock_t5.png")?
+                    load_tile_texture(creator, "placedblock_t5.png")?,
                 ],
             },
             grass: [
                 load_tile_texture(creator, "grass_g.png")?,
                 load_tile_texture(creator, "grass_g1.png")?,
                 load_tile_texture(creator, "grass_g2.png")?,
-                load_tile_texture(creator, "grass_g3.png")?
+                load_tile_texture(creator, "grass_g3.png")?,
             ],
             dirt: [
                 load_tile_texture(creator, "grass_d.png")?,
                 load_tile_texture(creator, "grass_d1.png")?,
                 load_tile_texture(creator, "grass_d2.png")?,
                 load_tile_texture(creator, "grass_d3.png")?,
-                load_tile_texture(creator, "grass_d4.png")?
+                load_tile_texture(creator, "grass_d4.png")?,
             ],
             top_slab: load_tile_texture(creator, "block_slab_r.png")?,
             bottom_slab: load_tile_texture(creator, "block_slab.png")?,

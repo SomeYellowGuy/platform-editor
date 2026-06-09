@@ -1,10 +1,16 @@
 use platform_editor_core::{
-    common_util::{self, ScrollInfo}, component::{
-        BackButtonBase, BackButtonMode, ComponentId, level::board::BoardBase, level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase}, title::{
+    common_util::{self, ScrollInfo},
+    component::{
+        BackButtonBase, BackButtonMode, ComponentId,
+        level::board::BoardBase,
+        level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
+        title::{
             TitleBase,
             button::{ButtonBase, ButtonType},
-        }
-    }, level::scratch::levels::LEVEL_COUNT, screen::Screen
+        },
+    },
+    level::scratch::levels::LEVEL_COUNT,
+    screen::Screen,
 };
 use sdl3::mouse::MouseButton;
 
@@ -78,12 +84,7 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
             let mut base = BoardBase::new();
             let level = logic_data.map_or(0, |l| l.app_data.level.playing_level);
             base.state.load_scratch_level(level);
-            map.insert(
-                ComponentId::Board,
-                Component::Board(base),
-                10,
-                0,
-            );
+            map.insert(ComponentId::Board, Component::Board(base), 10, 0);
         }
         Screen::Options => {}
     }
@@ -104,9 +105,7 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
                     | ComponentId::BackButton
             )
         }),
-        Screen::Level => {
-            map.remove_all(|k| matches!(k, ComponentId::Board))
-        }
+        Screen::Level => map.remove_all(|k| matches!(k, ComponentId::Board)),
         Screen::Options => {}
     }
 
@@ -114,25 +113,22 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
 }
 
 pub fn tick(screen: Screen, logic_data: &mut LogicData) {
-    match screen {
-        Screen::LevelSelect => {
-            let delta_seconds = logic_data.delta_time as f32 / 1_000_000_000.0;
-            let pos = logic_data.mouse_fpos().y;
+    if screen == Screen::LevelSelect {
+        let delta_seconds = logic_data.delta_time as f32 / 1_000_000_000.0;
+        let pos = logic_data.mouse_fpos().y;
 
-            common_util::scroll(ScrollInfo {
-                held: logic_data.is_mouse_button_held(MouseButton::Left),
-                last_pos: &mut logic_data.app_data.extra.last_y_mouse_pos,
-                pos,
-                velocity: &mut logic_data.app_data.level_select_scroll_velocity,
-                scroll: &mut logic_data.app_data.level_select_scroll,
-                delta_seconds,
-                starting_level_select_scroll: STARTING_LEVEL_SELECT_SCROLL,
-                spacing: SPACING,
-                levels: LEVEL_COUNT,
-                levels_per_row: LEVELS_PER_ROW,
-                extra_end_scroll: 50.0,
-            });
-        }
-        _ => {}
+        common_util::scroll(ScrollInfo {
+            held: logic_data.is_mouse_button_held(MouseButton::Left),
+            last_pos: &mut logic_data.app_data.extra.last_y_mouse_pos,
+            pos,
+            velocity: &mut logic_data.app_data.level_select_scroll_velocity,
+            scroll: &mut logic_data.app_data.level_select_scroll,
+            delta_seconds,
+            starting_level_select_scroll: STARTING_LEVEL_SELECT_SCROLL,
+            spacing: SPACING,
+            levels: LEVEL_COUNT,
+            levels_per_row: LEVELS_PER_ROW,
+            extra_end_scroll: 50.0,
+        });
     }
 }

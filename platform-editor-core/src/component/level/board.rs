@@ -2,13 +2,19 @@ use crate::level::LevelState;
 
 /// The main part of a level, and the area of the actual level.
 pub struct BoardBase {
-    pub state: LevelState
+    pub state: LevelState,
 }
 
 impl BoardBase {
     pub fn new() -> Self {
         Self {
-            state: LevelState::new()
+            state: LevelState::new(),
         }
+    }
+}
+
+impl Default for BoardBase {
+    fn default() -> Self {
+        Self::new()
     }
 }

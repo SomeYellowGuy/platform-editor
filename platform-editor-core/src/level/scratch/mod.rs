@@ -1,4 +1,7 @@
-use crate::{common_util::{Direction, FPos, digit_count}, level::{LockColor, Tile}};
+use crate::{
+    common_util::{Direction, Vec2f, digit_count},
+    level::{LockColor, Tile},
+};
 
 pub mod levels;
 
@@ -6,7 +9,7 @@ pub mod levels;
 pub enum ShooterDirection {
     Left,
     Right,
-    Up
+    Up,
 }
 
 impl From<ShooterDirection> for Direction {
@@ -22,7 +25,7 @@ impl From<ShooterDirection> for Direction {
 #[derive(Debug, Clone, Copy)]
 pub enum SpikeDirection {
     Up,
-    Down
+    Down,
 }
 
 impl From<SpikeDirection> for Direction {
@@ -37,7 +40,7 @@ impl From<SpikeDirection> for Direction {
 #[derive(Debug, Clone, Copy)]
 pub enum LockAxis {
     X,
-    Y
+    Y,
 }
 
 /// A tile for an original Scratch level.
@@ -52,7 +55,7 @@ pub enum StoredScratchTile {
 
     Shooter(ShooterDirection),
     Spike(SpikeDirection),
-    Lock(LockColor, LockAxis)
+    Lock(LockColor, LockAxis),
 }
 
 impl StoredScratchTile {
@@ -80,11 +83,13 @@ impl StoredScratchTile {
             b'I' => Some(Self::Lock(LockColor::Blue, LockAxis::Y)),
             b'J' => Some(Self::Lock(LockColor::Blue, LockAxis::X)),
             b'K' => Some(Self::Lock(LockColor::Yellow, LockAxis::X)),
-            _ => None
+            _ => None,
         }
     }
 
-    pub const fn tiles_from_bytes<'a>(bytes: &'a [u8; StoredScratchLevel::TILE_COUNT]) -> [StoredScratchTile; StoredScratchLevel::TILE_COUNT] {
+    pub const fn tiles_from_bytes(
+        bytes: &[u8; StoredScratchLevel::TILE_COUNT],
+    ) -> [StoredScratchTile; StoredScratchLevel::TILE_COUNT] {
         let mut out = [StoredScratchTile::Empty; StoredScratchLevel::TILE_COUNT];
 
         let mut i = 0;
@@ -110,24 +115,12 @@ impl StoredScratchTile {
             Self::BottomSlab => Some(Tile::BottomSlab),
             Self::Grass => {
                 let seed = Self::tile_seed(index + 1);
-                Some(Tile::Grass(
-                    if seed < 4 {
-                        seed
-                    } else {
-                        0
-                    }
-                ))
-            },
+                Some(Tile::Grass(if seed < 4 { seed } else { 0 }))
+            }
             Self::Dirt => {
                 let seed = Self::tile_seed(index + 1);
-                Some(Tile::Dirt(
-                    if seed < 5 {
-                        seed
-                    } else {
-                        0
-                    }
-                ))
-            },
+                Some(Tile::Dirt(if seed < 5 { seed } else { 0 }))
+            }
             Self::Shooter(shooter_direction) => Some(Tile::Shooter((*shooter_direction).into())),
             Self::Spike(spike_direction) => Some(Tile::Shooter((*spike_direction).into())),
             Self::Lock(_, _) => None,
@@ -142,7 +135,7 @@ pub struct StoredScratchLevel {
     pub collectibles: &'static [StoredScratchCollectible],
 
     // The player's start position.
-    pub start_pos: FPos
+    pub start_pos: Vec2f,
 }
 
 impl StoredScratchLevel {
@@ -153,12 +146,12 @@ impl StoredScratchLevel {
 
 #[derive(Debug, Clone, Copy)]
 pub struct StoredScratchCollectible {
-    pub pos: FPos,
-    pub kind: ScratchCollectible
+    pub pos: Vec2f,
+    pub kind: ScratchCollectible,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum ScratchCollectible {
     Orb,
-    Key(i8)
+    Key(i8),
 }

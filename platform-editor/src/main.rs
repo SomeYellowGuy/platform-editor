@@ -151,7 +151,7 @@ impl App {
             extra: ExtraAppData::default(),
             level_select_scroll: screen::STARTING_LEVEL_SELECT_SCROLL,
             level_select_scroll_velocity: 0.0,
-            level: LevelSave::new()
+            level: LevelSave::new(),
         };
 
         let mut components = ComponentMap::new();

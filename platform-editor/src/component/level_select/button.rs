@@ -1,9 +1,12 @@
 use platform_editor_core::{
     common_util,
-    component::{Hold, level_select::button::LevelSelectButtonBase}, screen::{Screen, TransitionCall, TransitionData},
+    component::{Hold, level_select::button::LevelSelectButtonBase},
+    screen::{Screen, TransitionCall, TransitionData},
 };
 use sdl3::{
-    mouse::MouseButton, rect::Rect, render::{FPoint, FRect}
+    mouse::MouseButton,
+    rect::Rect,
+    render::{FPoint, FRect},
 };
 
 use crate::{
