@@ -1,7 +1,7 @@
 use platform_editor_core::{
     component::{
         BackButtonBase, BackButtonMode, Hold,
-        level::board::BoardBase,
+        level::{board::BoardBase, item_tab::ItemTabBase},
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{TitleBase, button::ButtonBase},
     },
@@ -107,6 +107,7 @@ pub enum Component {
     LevelSelectHeader(LevelSelectHeaderBase),
 
     Board(BoardBase),
+    ItemTab(ItemTabBase),
 }
 
 impl_components! {
@@ -118,5 +119,6 @@ impl_components! {
     LevelSelectButton,
     LevelSelectHeader,
 
-    Board
+    Board,
+    ItemTab
 }

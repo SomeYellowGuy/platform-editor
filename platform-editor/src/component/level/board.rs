@@ -10,14 +10,14 @@ use crate::{
     util::{fpos_to_fpoint, frect_from_center},
 };
 
-pub const TILE_SIZE: f32 = 62.0;
-pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0);
+pub const TILE_SIZE: f32 = 60.0;
+pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 35.0);
 
 /// Converts a position in *level space* to a [`FPos`] one on the actual screen.
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
-fn pos_to_screen(base: &BoardBase, pos: Vec2f) -> Vec2f {
-    LEVEL_CENTER
+fn pos_to_screen(base: &BoardBase, pos: Vec2f, offset: f32) -> Vec2f {
+    LEVEL_CENTER - Vec2f::new(offset, 0.0)
         + Vec2f::new(
             pos.x - base.state.tile_state.size.x as f32 / 2.0,
             pos.y - base.state.tile_state.size.y as f32 / 2.0,
@@ -27,8 +27,8 @@ fn pos_to_screen(base: &BoardBase, pos: Vec2f) -> Vec2f {
 /// Converts a position in *level space* to an [`FPoint`] on the actual screen.
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
-fn pos_to_screen_point(base: &BoardBase, pos: Vec2f) -> FPoint {
-    fpos_to_fpoint(pos_to_screen(base, pos))
+fn pos_to_screen_point(base: &BoardBase, pos: Vec2f, offset: f32) -> FPoint {
+    fpos_to_fpoint(pos_to_screen(base, pos, offset))
 }
 
 impl Render for BoardBase {
@@ -36,9 +36,14 @@ impl Render for BoardBase {
         let width = self.state.tile_state.size.x;
         let height = self.state.tile_state.size.y;
 
+        let t = data.transition_offset(1.8);
+        let offset = t * t;
+
+        let level_center = LEVEL_CENTER - Vec2f::new(offset, 0.0);
+
         data.canvas.set_draw_color(Color::RGBA(30, 30, 30, 180));
         data.canvas.fill_rect(frect_from_center(
-            fpos_to_fpoint(LEVEL_CENTER),
+            fpos_to_fpoint(level_center),
             width as f32 * TILE_SIZE + 20.0,
             height as f32 * TILE_SIZE + 20.0,
         ))?;
@@ -46,7 +51,8 @@ impl Render for BoardBase {
         for y in 0..height {
             for x in 0..width {
                 // Draw the white tile texture.
-                let center = pos_to_screen(self, Vec2f::new(x as f32 + 0.5, y as f32 + 0.5));
+                let center =
+                    pos_to_screen(self, Vec2f::new(x as f32 + 0.5, y as f32 + 0.5), offset);
                 let rect = frect_from_center(fpos_to_fpoint(center), TILE_SIZE, TILE_SIZE);
                 data.canvas.copy_ex(
                     &data.textures.level.tiles.empty,
@@ -68,7 +74,7 @@ impl Render for BoardBase {
         }
 
         // Draw the player.
-        let player_center = pos_to_screen_point(self, self.state.player.pos);
+        let player_center = pos_to_screen_point(self, self.state.player.pos, offset);
         data.canvas.copy_ex(
             &data.textures.level.player,
             None,

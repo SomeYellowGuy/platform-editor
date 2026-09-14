@@ -51,6 +51,7 @@ pub enum ComponentId {
     LevelSelectHeader,
     BackButton,
     Board,
+    ItemTab,
 
     Other(usize),
 }

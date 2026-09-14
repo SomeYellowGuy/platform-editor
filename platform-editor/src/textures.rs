@@ -46,7 +46,7 @@ impl<'c> Textures<'c> {
                 texts: ExtractedFontTextureSets::new(creator, font)?,
             },
             level_select: LevelSelectTextures::load(creator, font)?,
-            level: LevelTextures::load(creator)?,
+            level: LevelTextures::load(creator, font)?,
         })
     }
 }
@@ -107,10 +107,23 @@ pub struct LevelTextures<'c> {
 
     pub player: Texture<'c>,
     pub flags: [Texture<'c>; 9],
+
+    pub items_text: Texture<'c>,
 }
 
 impl<'c> LevelTextures<'c> {
-    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
+    pub fn items_text(
+        creator: &'c TextureCreator<WindowContext>,
+        font: &Font,
+    ) -> Option<Texture<'c>> {
+        let surface = font
+            .render("ITEMS")
+            .blended(Color::RGB(255, 255, 255))
+            .ok()?;
+        creator.create_texture_from_surface(&surface).ok()
+    }
+
+    pub fn load(creator: &'c TextureCreator<WindowContext>, font: &Font) -> Option<Self> {
         let flags: Vec<_> = (1..=9)
             .filter_map(|n| load_texture(creator, &format!("assets/gfx/level/flag/{n}.png")))
             .collect();
@@ -118,6 +131,7 @@ impl<'c> LevelTextures<'c> {
             tiles: Self::load_tile_textures(creator)?,
             player: load_texture(creator, "assets/gfx/level/player.png")?,
             flags: flags.try_into().ok()?,
+            items_text: Self::items_text(creator, font)?,
         })
     }
 

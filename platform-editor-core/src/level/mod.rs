@@ -1,5 +1,5 @@
 use crate::{
-    common_util::{Direction, Rect, Vec2, Vec2f},
+    common_util::{Direction, Rectf, Vec2, Vec2f},
     level::scratch::StoredScratchLevel,
 };
 
@@ -54,8 +54,8 @@ pub struct Entity {
 }
 
 impl Entity {
-    pub fn hitbox(&self) -> Rect {
-        Rect::from_center(self.pos, Vec2::new(ENTITY_SIZE, ENTITY_SIZE))
+    pub fn hitbox(&self) -> Rectf {
+        Rectf::from_center(self.pos, Vec2::new(ENTITY_SIZE, ENTITY_SIZE))
     }
 
     pub fn tick(&mut self, tiles: &TileState, delta: f32) {
@@ -112,7 +112,7 @@ impl Entity {
     pub fn is_colliding_with_tiles(&self, tiles: &TileState) -> bool {
         let hitbox = self.hitbox();
 
-        if !Rect::new(
+        if !Rectf::new(
             Vec2f::new(0.0, 0.0),
             Vec2f::new(tiles.size.x as f32, tiles.size.y as f32),
         )
@@ -126,7 +126,7 @@ impl Entity {
                 if *tiles.tile(x, y) == Tile::Empty {
                     continue;
                 }
-                let tile_hitbox = Rect::from_xy_and_dimensions(x as f32, y as f32, 1.0, 1.0);
+                let tile_hitbox = Rectf::from_xy_and_dimensions(x as f32, y as f32, 1.0, 1.0);
                 if tile_hitbox.intersects(hitbox) {
                     return true;
                 }

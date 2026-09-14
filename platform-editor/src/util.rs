@@ -1,8 +1,11 @@
 use platform_editor_core::common_util::Vec2f;
 use sdl3::{
+    pixels::Color,
     rect::Rect,
-    render::{FPoint, FRect},
+    render::{FPoint, FRect, Texture},
 };
+
+use crate::render::{DrawResult, RenderData};
 
 /// Creates an [`FRect`] from a center position and a width and height.
 pub fn frect_from_center(center: FPoint, width: f32, height: f32) -> FRect {
@@ -21,4 +24,22 @@ pub fn frect_to_rect(rect: FRect) -> Rect {
 
 pub fn fpos_to_fpoint(pos: Vec2f) -> FPoint {
     FPoint::new(pos.x, pos.y)
+}
+
+pub fn create_font_texture_and(
+    data: &mut RenderData,
+    text: &str,
+    color: impl Into<Color>,
+    f: impl FnOnce(&mut RenderData, Texture) -> DrawResult,
+) -> DrawResult {
+    if let Ok(surface) = data.font.render(text).blended(color)
+        && let Ok(tex) = data
+            .canvas
+            .texture_creator()
+            .create_texture_from_surface(&surface)
+    {
+        f(data, tex)
+    } else {
+        Ok(())
+    }
 }

@@ -2,7 +2,7 @@ use platform_editor_core::{
     common_util::{self, ScrollInfo},
     component::{
         BackButtonBase, BackButtonMode, ComponentId,
-        level::board::BoardBase,
+        level::{board::BoardBase, item_tab::ItemTabBase},
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{
             TitleBase,
@@ -85,6 +85,12 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
             let level = logic_data.map_or(0, |l| l.app_data.level.playing_level);
             base.state.load_scratch_level(level);
             map.insert(ComponentId::Board, Component::Board(base), 10, 0);
+            map.insert(
+                ComponentId::ItemTab,
+                Component::ItemTab(ItemTabBase {}),
+                15,
+                5,
+            );
         }
         Screen::Options => {}
     }
@@ -105,7 +111,7 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
                     | ComponentId::BackButton
             )
         }),
-        Screen::Level => map.remove_all(|k| matches!(k, ComponentId::Board)),
+        Screen::Level => map.remove_all(|k| matches!(k, ComponentId::Board | ComponentId::ItemTab)),
         Screen::Options => {}
     }
 

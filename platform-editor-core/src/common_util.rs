@@ -173,12 +173,12 @@ pub type Vec2i = Vec2<i32>;
 /// `pos` is the rectangle's top left vertex,
 /// while `dimensions` represents the rectangle's dimensions.
 #[derive(Debug, Copy, Clone)]
-pub struct Rect {
+pub struct Rectf {
     pub pos: Vec2f,
     pub dimensions: Vec2f,
 }
 
-impl Rect {
+impl Rectf {
     /// Creates a [`Rect`] with the provided top-left position vector and dimensions.
     #[must_use]
     pub const fn new(pos: Vec2f, dimensions: Vec2f) -> Self {

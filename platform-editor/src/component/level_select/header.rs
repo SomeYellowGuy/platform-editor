@@ -1,7 +1,7 @@
 use platform_editor_core::component::level_select::LevelSelectHeaderBase;
 use sdl3::{pixels::Color, rect::Rect, render::FRect};
 
-use crate::{HEIGHT, WIDTH, logic::Logic, render::Render};
+use crate::{HEIGHT, WIDTH, logic::Logic, render::Render, util::create_font_texture_and};
 
 impl Render for LevelSelectHeaderBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
@@ -63,12 +63,7 @@ impl Render for LevelSelectHeaderBase {
         )?;
 
         // Draw the star count.
-        if let Ok(surface) = data.font.render("0/90").blended(Color::RGB(255, 255, 255))
-            && let Ok(tex) = data
-                .canvas
-                .texture_creator()
-                .create_texture_from_surface(&surface)
-        {
+        create_font_texture_and(data, "0/90", Color::RGB(255, 255, 255), |data, tex| {
             data.canvas.copy_ex(
                 &tex,
                 None,
@@ -82,8 +77,8 @@ impl Render for LevelSelectHeaderBase {
                 None,
                 false,
                 false,
-            )?;
-        }
+            )
+        })?;
 
         data.canvas.set_draw_color(Color::RGBA(10, 10, 10, 130));
         data.canvas.fill_rect(Rect::new(
