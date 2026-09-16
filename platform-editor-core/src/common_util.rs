@@ -40,7 +40,7 @@ pub fn scroll(info: ScrollInfo<'_>) {
         *info.last_pos = Some(info.pos);
     } else {
         let max_scroll = info.starting_level_select_scroll
-            - info.spacing * (info.levels.div_ceil(info.levels_per_row) - 2) as f32
+            - info.spacing * (info.levels.div_ceil(info.levels_per_row).saturating_sub(2)) as f32
             - info.extra_end_scroll;
         // Push the scroll towards the level buttons if it is dragged out of bounds.
         let (drag_value, out_by): (f32, f32) = if *info.scroll > info.starting_level_select_scroll {
@@ -231,6 +231,7 @@ impl Rectf {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Direction {
     Up,
     Down,

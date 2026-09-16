@@ -31,7 +31,7 @@ impl Render for ItemTabBase {
             None,
             FRect::new(
                 20.0,
-                (HEADER_HEIGHT as f32 - height) / 2.0 - 5.0 - offset as f32,
+                (HEADER_HEIGHT as f32 - height) / 2.0 - 5.0 - offset,
                 tex.width() as f32 * TEXT_SCALE,
                 height,
             ),

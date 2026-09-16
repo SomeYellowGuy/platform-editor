@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{
+    HashMap,
+    hash_map::{Iter, IterMut},
+};
 
 use crate::component::title::button::ButtonType;
 
@@ -52,6 +55,7 @@ pub enum ComponentId {
     BackButton,
     Board,
     ItemTab,
+    EndDialog,
 
     Other(usize),
 }
@@ -74,6 +78,14 @@ pub enum ComponentMapQueryType {
     Logic,
 }
 
+#[derive(Debug, Clone)]
+pub struct QueuedComponent<C> {
+    pub id: ComponentId,
+    pub component: C,
+    pub render_priority: i32,
+    pub logic_priority: i32,
+}
+
 impl<C> ComponentMap<C> {
     /// Creates a new map.
     pub fn new() -> Self {
@@ -85,6 +97,11 @@ impl<C> ComponentMap<C> {
             cached_render_ids: Vec::new(),
             cached_logic_ids: Vec::new(),
         }
+    }
+
+    /// Returns a reference to the component corresponding to the given ID.
+    pub fn get(&self, id: ComponentId) -> Option<&C> {
+        self.components.get(&id)
     }
 
     /// Updates the inner-cached sorted IDs in the map.
@@ -119,6 +136,18 @@ impl<C> ComponentMap<C> {
         self.components.insert(id, component);
         self.render_priorities.insert(id, render_priority);
         self.logic_priorities.insert(id, logic_priority);
+    }
+
+    /// Inserts a new queued component in this map.
+    ///
+    /// Make sure to call [`ComponentMap::update_cache`] once after adding some desired elements.
+    pub fn insert_queued(&mut self, queued: QueuedComponent<C>) {
+        self.insert(
+            queued.id,
+            queued.component,
+            queued.render_priority,
+            queued.logic_priority,
+        );
     }
 
     /// Removes a component, with the provided key, from this map (if any).
@@ -218,6 +247,46 @@ impl<C> Default for ComponentMap<C> {
     }
 }
 
+pub struct ComponentMapIter<'a, C>(Iter<'a, ComponentId, C>);
+
+impl<'a, C> Iterator for ComponentMapIter<'a, C> {
+    type Item = (ComponentId, &'a C);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(id, component)| (*id, component))
+    }
+}
+
+impl<'a, C> IntoIterator for &'a ComponentMap<C> {
+    type Item = (ComponentId, &'a C);
+
+    type IntoIter = ComponentMapIter<'a, C>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ComponentMapIter(self.components.iter())
+    }
+}
+
+pub struct ComponentMapIterMut<'a, C>(IterMut<'a, ComponentId, C>);
+
+impl<'a, C> Iterator for ComponentMapIterMut<'a, C> {
+    type Item = (ComponentId, &'a mut C);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|(id, component)| (*id, component))
+    }
+}
+
+impl<'a, C> IntoIterator for &'a mut ComponentMap<C> {
+    type Item = (ComponentId, &'a mut C);
+
+    type IntoIter = ComponentMapIterMut<'a, C>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ComponentMapIterMut(self.components.iter_mut())
+    }
+}
+
 /// A trait for something that can be "held", like a button.
 pub trait Hold {
     const MAX_HOLD_TIME: u32;
@@ -235,4 +304,9 @@ pub trait Hold {
             self.set_hold_time((hold_time as u128).saturating_sub(delta) as u32);
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Event {
+    LevelFinish,
 }

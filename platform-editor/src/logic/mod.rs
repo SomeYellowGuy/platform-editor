@@ -1,4 +1,4 @@
-use platform_editor_core::screen::TransitionCall;
+use platform_editor_core::{component::Event, screen::TransitionCall};
 use sdl3::{
     keyboard::{Keycode, Scancode},
     mouse::MouseButton,
@@ -8,7 +8,7 @@ use sdl3::{
 };
 
 use crate::{
-    AppData,
+    AppData, QueuedComponent, QueuedData,
     logic::input::{InputData, MouseEvent},
 };
 
@@ -26,6 +26,9 @@ pub struct LogicData<'app> {
 
     /// The current transition call.
     pub transition_call: TransitionCall,
+
+    /// Any queued things to handle.
+    pub queued: QueuedData,
 }
 
 impl LogicData<'_> {
@@ -87,6 +90,16 @@ impl LogicData<'_> {
         let mouse = self.mouse_fpos();
         Point::new(mouse.x as i32, mouse.y as i32)
     }
+
+    /// Adds an event to queue, handled after the current logical tick.
+    pub fn queue_event(&mut self, event: Event) {
+        self.queued.add_event(event);
+    }
+
+    /// Adds a component to queue to add after the current logical tick.
+    pub fn queue_component(&mut self, component: QueuedComponent) {
+        self.queued.add_component(component);
+    }
 }
 
 /// A trait to provide a method for a "logical tick", which may or may not
@@ -94,4 +107,12 @@ impl LogicData<'_> {
 pub trait Logic {
     /// Performs this object's logic.
     fn run_logic(&mut self, _data: &mut LogicData) {}
+
+    /// Whether this component handles events.
+    fn handles_events(&self) -> bool {
+        false
+    }
+
+    /// Handle an event (if this component handles events at the time of event handling).
+    fn handle(&mut self, _event: &Event) {}
 }

@@ -1,4 +1,4 @@
-use crate::{AppData, component::Hold, screen::Screen};
+use crate::{AppData, component::Hold, level::scratch::levels, screen::Screen};
 
 /// A struct providing button behavior.
 pub struct ButtonBase {
@@ -65,7 +65,7 @@ impl ButtonType {
         if self == Self::Play {
             // Check the first unbeat level.
             let mut i = 0;
-            while i < 30 {
+            while i < levels::LEVEL_COUNT {
                 if data.level.stars[i] == 0 {
                     break;
                 }

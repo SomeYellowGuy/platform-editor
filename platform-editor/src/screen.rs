@@ -111,7 +111,12 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
                     | ComponentId::BackButton
             )
         }),
-        Screen::Level => map.remove_all(|k| matches!(k, ComponentId::Board | ComponentId::ItemTab)),
+        Screen::Level => map.remove_all(|k| {
+            matches!(
+                k,
+                ComponentId::Board | ComponentId::ItemTab | ComponentId::EndDialog
+            )
+        }),
         Screen::Options => {}
     }
 

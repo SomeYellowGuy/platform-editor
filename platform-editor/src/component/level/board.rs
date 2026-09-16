@@ -1,10 +1,16 @@
 use platform_editor_core::{
-    common_util::Vec2f, component::level::board::BoardBase, level::ENTITY_SIZE,
+    common_util::Vec2f,
+    component::{
+        ComponentId, QueuedComponent,
+        level::{board::BoardBase, end_dialog::EndDialogBase},
+    },
+    level::ENTITY_SIZE,
 };
 use sdl3::{keyboard::Scancode, pixels::Color, render::FPoint};
 
 use crate::{
     HEIGHT, WIDTH,
+    component::Component,
     logic::Logic,
     render::Render,
     util::{fpos_to_fpoint, frect_from_center},
@@ -89,6 +95,19 @@ impl Render for BoardBase {
             false,
         )?;
 
+        // Draw the flag.
+        let flag_center = pos_to_screen_point(self, self.state.flag.pos, offset);
+        let flag_animation_state = (data.oscillation_angle(16.0) as usize) % 9;
+        data.canvas.copy_ex(
+            &data.textures.level.flags[flag_animation_state],
+            None,
+            frect_from_center(flag_center, 0.9 * TILE_SIZE, TILE_SIZE),
+            0.0,
+            None,
+            false,
+            false,
+        )?;
+
         Ok(())
     }
 }
@@ -96,13 +115,25 @@ impl Render for BoardBase {
 impl Logic for BoardBase {
     fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
         let delta = data.delta_time as f32 / 1_000_000_000.0;
-        self.state.tick(delta);
+        if self.state.tick(delta) {
+            // Finish the level. Add an end dialog.
+            self.state.mark_finished();
 
-        self.state.player.apply_controls(
-            data.is_held(Scancode::Left),
-            data.is_held(Scancode::Right),
-            data.is_held(Scancode::Up),
-            delta,
-        );
+            data.queue_component(QueuedComponent {
+                id: ComponentId::EndDialog,
+                component: Component::EndDialog(EndDialogBase::from_level_state(&self.state)),
+                render_priority: 20,
+                logic_priority: 10,
+            });
+        }
+
+        if !self.state.finished {
+            self.state.player.apply_controls(
+                data.is_held(Scancode::Left),
+                data.is_held(Scancode::Right),
+                data.is_held(Scancode::Up),
+                delta,
+            );
+        }
     }
 }

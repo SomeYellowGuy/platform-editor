@@ -54,7 +54,7 @@ impl TransitionData {
     /// Creates data for a new (exit) transition, .
     ///
     /// Both times are in nanoseconds.
-    pub fn new(exit_time: u64, enter_time: u64, new_screen: Screen) -> Self {
+    pub const fn new(exit_time: u64, enter_time: u64, new_screen: Screen) -> Self {
         Self::Exit {
             duration: exit_time,
             new_screen,

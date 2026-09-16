@@ -92,9 +92,8 @@ impl Render for LevelSelectButtonBase {
         }
 
         // 3: draw the stars
-        for star in 0..3 {
+        for star_offset in &STAR_OFFSETS {
             let collected = false;
-            let star_offset = STAR_OFFSETS[star];
             let star_pos = {
                 let mut pos = pos;
                 pos.x += star_offset.0.0;

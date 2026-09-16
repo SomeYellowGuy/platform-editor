@@ -108,6 +108,8 @@ pub struct LevelTextures<'c> {
     pub player: Texture<'c>,
     pub flags: [Texture<'c>; 9],
 
+    pub end_dialog: Texture<'c>,
+
     pub items_text: Texture<'c>,
 }
 
@@ -131,6 +133,7 @@ impl<'c> LevelTextures<'c> {
             tiles: Self::load_tile_textures(creator)?,
             player: load_texture(creator, "assets/gfx/level/player.png")?,
             flags: flags.try_into().ok()?,
+            end_dialog: load_texture(creator, "assets/gfx/level/end_dialog.png")?,
             items_text: Self::items_text(creator, font)?,
         })
     }

@@ -1,6 +1,6 @@
 use crate::{
     common_util::{Direction, Vec2f, digit_count},
-    level::{LockColor, Tile},
+    level::{FlagState, LockColor, StarCondition, Tile},
 };
 
 pub mod levels;
@@ -129,19 +129,57 @@ impl StoredScratchTile {
 }
 
 // An original Scratch level, which can be loaded in the game.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct StoredScratchLevel {
     pub tiles: [StoredScratchTile; StoredScratchLevel::WIDTH * StoredScratchLevel::HEIGHT],
     pub collectibles: &'static [StoredScratchCollectible],
-
-    // The player's start position.
+    /// The player's start position.
     pub start_pos: Vec2f,
+    /// The flag's state.
+    pub flag: FlagState,
+    /// The other star goals.
+    pub star_conditions: [StarCondition; 2],
 }
 
 impl StoredScratchLevel {
     pub const WIDTH: usize = 13;
     pub const HEIGHT: usize = 8;
     pub const TILE_COUNT: usize = Self::WIDTH * Self::HEIGHT;
+
+    pub const fn new(tiles: &[u8; 104]) -> Self {
+        Self {
+            tiles: StoredScratchTile::tiles_from_bytes(tiles),
+            collectibles: &[],
+            start_pos: Vec2f::new(0.0, 0.0),
+            flag: FlagState::new(Vec2f::new(0.0, 0.0)),
+            star_conditions: [StarCondition::Time(10), StarCondition::Time(10)],
+        }
+    }
+
+    pub const fn start_pos(mut self, pos: Vec2f) -> Self {
+        self.start_pos = pos;
+        self
+    }
+
+    pub const fn flag_pos(mut self, pos: Vec2f) -> Self {
+        self.flag = FlagState::new(pos);
+        self
+    }
+
+    pub const fn flag(mut self, flag: FlagState) -> Self {
+        self.flag = flag;
+        self
+    }
+
+    pub const fn collectibles(mut self, collectibles: &'static [StoredScratchCollectible]) -> Self {
+        self.collectibles = collectibles;
+        self
+    }
+
+    pub const fn stars(mut self, star_2: StarCondition, star_3: StarCondition) -> Self {
+        self.star_conditions = [star_2, star_3];
+        self
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

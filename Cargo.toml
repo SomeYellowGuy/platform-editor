@@ -6,8 +6,7 @@ members = [
 ]
 
 [workspace.dependencies]
-platform-editor = { path = "platform-editor" }
 platform-editor-core = { path = "platform-editor-core" }
 
-sdl3 = { version = "0.18.3", features = ["image", "ttf"] }
+sdl3 = { version = "0.18.3", features = ["image", "ttf", "build-from-source-static"] }
 sdl3-sys = "0.6.5"

@@ -35,6 +35,8 @@ pub const HEIGHT: u32 = 720;
 pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
 
 pub type ComponentMap = platform_editor_core::component::ComponentMap<Component>;
+pub type QueuedComponent = platform_editor_core::component::QueuedComponent<Component>;
+pub type QueuedData = platform_editor_core::QueuedData<Component>;
 
 pub type AppData = platform_editor_core::AppData<ExtraAppData>;
 
@@ -271,6 +273,7 @@ impl App {
             delta_time,
             canvas: &self.canvas,
             transition_call: TransitionCall::None,
+            queued: QueuedData::new(),
         };
 
         let call = if !transition_manager.is_transitioning() {
@@ -321,6 +324,25 @@ impl App {
         components.descending_iter_mut(ComponentMapQueryType::Logic, |_, component| {
             component.run_logic(logic_data);
         });
+
+        // Handle events and newly-added components.
+        let (events, new_components) = logic_data.queued.extract();
+
+        for (_, component) in &mut components.into_iter() {
+            if component.handles_events() {
+                for event in &events {
+                    component.handle(event);
+                }
+            }
+        }
+
+        let new_components_is_empty = new_components.is_empty();
+        for queued in new_components {
+            components.insert_queued(queued);
+        }
+        if !new_components_is_empty {
+            components.update_cache();
+        }
     }
 
     fn render(

@@ -1,4 +1,4 @@
-use crate::level::LevelState;
+use crate::level::state::LevelState;
 
 /// The main part of a level, and the area of the actual level.
 pub struct BoardBase {
