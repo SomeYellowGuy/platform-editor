@@ -1,7 +1,11 @@
 use platform_editor_core::component::level_select::LevelSelectHeaderBase;
-use sdl3::{pixels::Color, rect::Rect, render::FRect};
+use sdl3::{
+    pixels::Color,
+    rect::Rect,
+    render::{FPoint, FRect},
+};
 
-use crate::{HEIGHT, WIDTH, logic::Logic, render::Render, util::create_font_texture_and};
+use crate::{HEIGHT, WIDTH, logic::Logic, render::Render, textures::TextAlignment};
 
 impl Render for LevelSelectHeaderBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
@@ -25,23 +29,17 @@ impl Render for LevelSelectHeaderBase {
         ))?;
 
         const TEXT_SCALE: f32 = 1.5;
-        let texture = &data.textures.level_select.header_text;
-        let height = texture.height() as f32 * TEXT_SCALE;
+        let texture = &mut data.textures.level_select.header_text;
+
+        let text_y = HEADER_HEIGHT as f32 / 2.0 - 5.0 - header_offset as f32;
 
         // Draw the "Level Select" text.
-        data.canvas.copy_ex(
-            texture,
-            None,
-            FRect::new(
-                20.0,
-                (HEADER_HEIGHT as f32 - height) / 2.0 - 5.0 - header_offset as f32,
-                texture.width() as f32 * TEXT_SCALE,
-                height,
-            ),
-            0.0,
-            None,
-            false,
-            false,
+        texture.update(data.canvas, data.font, "Level Select")?;
+        texture.draw(
+            data.canvas,
+            TextAlignment::Left,
+            FPoint::new(20.0, text_y),
+            TEXT_SCALE,
         )?;
 
         const STAR_INFO_OFFSET: f32 = 270.0;
@@ -63,22 +61,18 @@ impl Render for LevelSelectHeaderBase {
         )?;
 
         // Draw the star count.
-        create_font_texture_and(data, "0/90", Color::RGB(255, 255, 255), |data, tex| {
-            data.canvas.copy_ex(
-                &tex,
-                None,
-                FRect::new(
-                    (WIDTH / 2) as f32 + STAR_INFO_OFFSET + 90.0,
-                    -7.0 - header_offset as f32,
-                    tex.width() as f32 * TEXT_SCALE,
-                    tex.height() as f32 * TEXT_SCALE,
-                ),
-                0.0,
-                None,
-                false,
-                false,
-            )
-        })?;
+        data.textures
+            .level_select
+            .stars_text
+            .update(data.canvas, data.font, "0/90")?;
+
+        let star_count_pos = FPoint::new((WIDTH / 2) as f32 + STAR_INFO_OFFSET + 90.0, text_y);
+        data.textures.level_select.stars_text.draw(
+            data.canvas,
+            TextAlignment::Left,
+            star_count_pos,
+            TEXT_SCALE,
+        )?;
 
         data.canvas.set_draw_color(Color::RGBA(10, 10, 10, 130));
         data.canvas.fill_rect(Rect::new(

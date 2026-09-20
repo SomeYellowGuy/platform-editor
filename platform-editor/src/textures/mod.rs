@@ -1,12 +1,14 @@
 use sdl3::{
     image::LoadTexture,
-    pixels::Color,
     render::{Texture, TextureCreator},
-    ttf::Font,
     video::WindowContext,
 };
 
 use crate::component::title::button::ExtractedFontTextureSets;
+
+mod dynamic;
+
+pub use dynamic::{DynamicText, TextAlignment};
 
 pub struct Textures<'c> {
     pub strip: Texture<'c>,
@@ -21,7 +23,7 @@ fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> O
     if let Ok(t) = creator.load_texture(name) {
         Some(t)
     } else {
-        println!("Coul not load texture: {name}");
+        println!("Could not load texture: {name}");
         None
     }
 }
@@ -34,7 +36,7 @@ fn load_tile_texture<'c>(
 }
 
 impl<'c> Textures<'c> {
-    pub fn load(creator: &'c TextureCreator<WindowContext>, font: &Font) -> Option<Textures<'c>> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Textures<'c>> {
         Some(Self {
             strip: load_texture(creator, "assets/gfx/strip.png")?,
             back_button: load_texture(creator, "assets/gfx/back.png")?,
@@ -43,10 +45,10 @@ impl<'c> Textures<'c> {
                 button: load_texture(creator, "assets/gfx/title/button.png")?,
                 button_icons: load_texture(creator, "assets/gfx/title/button_icons.png")?,
 
-                texts: ExtractedFontTextureSets::new(creator, font)?,
+                texts: ExtractedFontTextureSets::new(creator),
             },
-            level_select: LevelSelectTextures::load(creator, font)?,
-            level: LevelTextures::load(creator, font)?,
+            level_select: LevelSelectTextures::load(creator)?,
+            level: LevelTextures::load(creator)?,
         })
     }
 }
@@ -66,22 +68,12 @@ pub struct LevelSelectTextures<'c> {
     pub digits: Texture<'c>,
     pub locked: Texture<'c>,
 
-    pub header_text: Texture<'c>,
+    pub header_text: DynamicText<'c>,
+    pub stars_text: DynamicText<'c>,
 }
 
 impl<'c> LevelSelectTextures<'c> {
-    pub fn header_text(
-        creator: &'c TextureCreator<WindowContext>,
-        font: &Font,
-    ) -> Option<Texture<'c>> {
-        let surface = font
-            .render("Level Select")
-            .blended(Color::RGB(255, 255, 255))
-            .ok()?;
-        creator.create_texture_from_surface(&surface).ok()
-    }
-
-    pub fn load(creator: &'c TextureCreator<WindowContext>, font: &Font) -> Option<Self> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         Some(Self {
             level_buttons: load_texture(creator, "assets/gfx/level_select/level_buttons.png")?,
             stars: load_texture(creator, "assets/gfx/level_select/stars.png")?,
@@ -91,7 +83,8 @@ impl<'c> LevelSelectTextures<'c> {
             )?,
             digits: load_texture(creator, "assets/gfx/level_select/digits.png")?,
             locked: load_texture(creator, "assets/gfx/level_select/locked.png")?,
-            header_text: Self::header_text(creator, font)?,
+            header_text: DynamicText::new(creator),
+            stars_text: DynamicText::new(creator),
         })
     }
 }
@@ -107,25 +100,15 @@ pub struct LevelTextures<'c> {
 
     pub player: Texture<'c>,
     pub flags: [Texture<'c>; 9],
+    pub hit_flag: Texture<'c>,
 
-    pub end_dialog: Texture<'c>,
+    pub end_dialog: EndDialogTextures<'c>,
 
-    pub items_text: Texture<'c>,
+    pub items_text: DynamicText<'c>,
 }
 
 impl<'c> LevelTextures<'c> {
-    pub fn items_text(
-        creator: &'c TextureCreator<WindowContext>,
-        font: &Font,
-    ) -> Option<Texture<'c>> {
-        let surface = font
-            .render("ITEMS")
-            .blended(Color::RGB(255, 255, 255))
-            .ok()?;
-        creator.create_texture_from_surface(&surface).ok()
-    }
-
-    pub fn load(creator: &'c TextureCreator<WindowContext>, font: &Font) -> Option<Self> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         let flags: Vec<_> = (1..=9)
             .filter_map(|n| load_texture(creator, &format!("assets/gfx/level/flag/{n}.png")))
             .collect();
@@ -133,8 +116,9 @@ impl<'c> LevelTextures<'c> {
             tiles: Self::load_tile_textures(creator)?,
             player: load_texture(creator, "assets/gfx/level/player.png")?,
             flags: flags.try_into().ok()?,
-            end_dialog: load_texture(creator, "assets/gfx/level/end_dialog.png")?,
-            items_text: Self::items_text(creator, font)?,
+            hit_flag: load_texture(creator, "assets/gfx/level/flag/hit.png")?,
+            end_dialog: EndDialogTextures::load(creator)?,
+            items_text: DynamicText::new(creator),
         })
     }
 
@@ -191,6 +175,22 @@ impl<'c> LevelTextures<'c> {
             top_slab: load_tile_texture(creator, "block_slab_r.png")?,
             bottom_slab: load_tile_texture(creator, "block_slab.png")?,
             block: load_tile_texture(creator, "block.png")?,
+        })
+    }
+}
+
+pub struct EndDialogTextures<'c> {
+    pub base: Texture<'c>,
+    pub nice_text: DynamicText<'c>,
+    pub level_text: DynamicText<'c>,
+}
+
+impl<'c> EndDialogTextures<'c> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
+        Some(Self {
+            base: load_texture(creator, "assets/gfx/level/end_dialog/base.png")?,
+            nice_text: DynamicText::new(creator),
+            level_text: DynamicText::new(creator),
         })
     }
 }

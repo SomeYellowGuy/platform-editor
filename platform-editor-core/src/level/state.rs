@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crate::{
     common_util::{Vec2, Vec2f},
     component::level::end_dialog::StarStatus,
@@ -22,7 +24,7 @@ impl TileState {
 
 #[derive(Debug, Default, Clone)]
 pub struct LevelState {
-    pub finished: bool,
+    pub finish_instant: Option<Instant>,
 
     pub player: Entity,
     pub tile_state: TileState,
@@ -55,13 +57,19 @@ impl LevelState {
         self.player.velocity = Vec2f::new(0.0, 0.0);
         self.player.reversed_gravity = false;
         self.flag = level.flag;
+
+        self.finish_instant = None;
+    }
+
+    pub fn is_finished(&self) -> bool {
+        self.finish_instant.is_some()
     }
 
     pub fn tick(&mut self, delta: f32) -> bool {
         self.player.tick(&self.tile_state, delta);
 
         // Check if the player touched the flag.
-        if !self.finished {
+        if !self.is_finished() {
             self.flag.hitbox().intersects(self.player.hitbox())
         } else {
             false
@@ -84,6 +92,6 @@ impl LevelState {
     }
 
     pub fn mark_finished(&mut self) {
-        self.finished = true
+        self.finish_instant = Some(Instant::now());
     }
 }

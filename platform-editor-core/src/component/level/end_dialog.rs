@@ -24,7 +24,7 @@ pub struct StarStatus {
 impl EndDialogBase {
     pub fn from_level_state(state: &LevelState) -> Self {
         Self {
-            start: Instant::now(),
+            start: state.finish_instant.unwrap_or_else(Instant::now),
             star_statuses: state.star_statuses(),
         }
     }

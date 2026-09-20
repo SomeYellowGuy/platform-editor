@@ -9,11 +9,7 @@ use sdl3::{
     render::{FPoint, FRect},
 };
 
-use crate::{
-    logic::Logic,
-    render::Render,
-    util::{self, frect_from_center},
-};
+use crate::{logic::Logic, render::Render, util::FRectExt};
 
 pub const SPACING: f32 = 220.0;
 pub const SIDE: f32 = 190.0;
@@ -56,7 +52,7 @@ impl Render for LevelSelectButtonBase {
         data.canvas.copy_ex(
             &data.textures.level_select.level_buttons,
             Rect::new(0, 0, 90, 90),
-            util::frect_from_center(pos, SIDE * scale_multiplier, SIDE * scale_multiplier),
+            FRect::from_center(pos, SIDE * scale_multiplier, SIDE * scale_multiplier),
             rotation,
             None,
             false,
@@ -82,7 +78,7 @@ impl Render for LevelSelectButtonBase {
             data.canvas.copy_ex(
                 &data.textures.level_select.digits,
                 FRect::new(60.0 * digit as f32, 0.0, 60.0, 80.0),
-                frect_from_center(digit_pos, 60.0 * NUMBER_SCALE, 80.0 * NUMBER_SCALE),
+                FRect::from_center(digit_pos, 60.0 * NUMBER_SCALE, 80.0 * NUMBER_SCALE),
                 0.0,
                 None,
                 false,
@@ -103,7 +99,7 @@ impl Render for LevelSelectButtonBase {
             data.canvas.copy_ex(
                 &data.textures.level_select.stars,
                 FRect::new(if collected { 40.0 } else { 0.0 }, 0.0, 40.0, 40.0),
-                util::frect_from_center(star_pos, 75.0, 75.0),
+                FRect::from_center(star_pos, 75.0, 75.0),
                 star_offset.1,
                 None,
                 false,
@@ -117,12 +113,12 @@ impl Render for LevelSelectButtonBase {
 
 impl Logic for LevelSelectButtonBase {
     fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
-        let hitbox = util::frect_to_rect(frect_from_center(
+        let hitbox = FRect::from_center(
             normal_pos(self, data.app_data.level_select_scroll),
             SIDE,
             SIDE,
-        ));
-        let hovered = hitbox.contains_point(data.mouse_pos());
+        );
+        let hovered = hitbox.contains_point(data.mouse_fpos());
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             // Play the level.

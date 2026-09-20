@@ -73,7 +73,7 @@ pub fn main() {
         .load_font("assets/font.ttf", 48.0)
         .expect("could not load font");
 
-    let images = Textures::load(&texture_creator, &font).expect("could not create images");
+    let textures = Textures::load(&texture_creator).expect("could not create textures");
 
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
@@ -84,7 +84,7 @@ pub fn main() {
 
     let mut app = App { event_pump, canvas };
 
-    app.run(images, font)
+    app.run(textures, font)
 }
 
 /// Represents the app.
@@ -124,6 +124,7 @@ impl Default for ExtraAppData {
 
 pub struct ExtractedData {
     pub y_scroll: f32,
+    pub playing_level: usize,
 }
 
 impl App {
@@ -285,13 +286,14 @@ impl App {
 
         if let Some((old_screen, new_screen)) = transition_manager.tick(call) {
             screen::on_exit(old_screen, components);
-            screen::on_enter(new_screen, components, Some(&mut logic_data));
+            screen::on_enter(new_screen, components, Some(&mut logic_data))
         }
 
         // Rendering
 
         let extracted = ExtractedData {
             y_scroll: app_data.level_select_scroll,
+            playing_level: app_data.level.playing_level,
         };
 
         if let Some(e) = self

@@ -8,15 +8,15 @@ use platform_editor_core::{
 use sdl3::{
     mouse::MouseButton,
     pixels::Color,
-    rect::{Point, Rect},
-    render::{Canvas, Texture, TextureCreator},
-    ttf::Font,
-    video::{Window, WindowContext},
+    render::{FPoint, FRect, TextureCreator},
+    video::WindowContext,
 };
 
 use crate::{
     logic::{Logic, LogicData},
     render::{Render, RenderData},
+    textures::{DynamicText, TextAlignment},
+    util::FRectExt,
 };
 
 /// Stores the font texture sets for use in the button text.
@@ -27,100 +27,54 @@ pub struct ExtractedFontTextureSets<'c> {
 }
 
 impl<'c> ExtractedFontTextureSets<'c> {
-    pub fn new(creator: &'c TextureCreator<WindowContext>, font: &Font) -> Option<Self> {
-        Some(Self {
-            play: ExtractedFontTextureSet::new(creator, font, ButtonType::Play)?,
-            level_select: ExtractedFontTextureSet::new(creator, font, ButtonType::LevelSelect)?,
-            options: ExtractedFontTextureSet::new(creator, font, ButtonType::Options)?,
-        })
+    pub fn new(creator: &'c TextureCreator<WindowContext>) -> Self {
+        Self {
+            play: ExtractedFontTextureSet::new(creator),
+            level_select: ExtractedFontTextureSet::new(creator),
+            options: ExtractedFontTextureSet::new(creator),
+        }
     }
 
-    fn set(&'c self, ty: ButtonType) -> &'c ExtractedFontTextureSet<'c> {
+    fn set(&mut self, ty: ButtonType) -> &mut ExtractedFontTextureSet<'c> {
         match ty {
-            ButtonType::Play => &self.play,
-            ButtonType::LevelSelect => &self.level_select,
-            ButtonType::Options => &self.options,
+            ButtonType::Play => &mut self.play,
+            ButtonType::LevelSelect => &mut self.level_select,
+            ButtonType::Options => &mut self.options,
         }
     }
 }
 
 pub struct ExtractedFontTextureSet<'c> {
-    top: Texture<'c>,
-    bottom: Texture<'c>,
+    top: DynamicText<'c>,
+    bottom: DynamicText<'c>,
 }
 
 impl<'c> ExtractedFontTextureSet<'c> {
-    fn texture(
-        creator: &'c TextureCreator<WindowContext>,
-        font: &Font,
-        ty: ButtonType,
-        color: Color,
-    ) -> Option<Texture<'c>> {
-        let surface = font.render(ty.title()).blended(color).ok()?;
-
-        let texture = creator.create_texture_from_surface(&surface).ok()?;
-
-        Some(texture)
-    }
-
-    pub fn new(
-        creator: &'c TextureCreator<WindowContext>,
-        font: &Font,
-        ty: ButtonType,
-    ) -> Option<Self> {
-        Some(Self {
-            top: Self::texture(creator, font, ty, Color::RGB(55, 55, 55))?,
-            bottom: Self::texture(creator, font, ty, Color::RGBA(30, 30, 30, 60))?,
-        })
+    pub fn new(creator: &'c TextureCreator<WindowContext>) -> Self {
+        Self {
+            top: DynamicText::with_color(creator, Color::RGB(55, 55, 55)),
+            bottom: DynamicText::with_color(creator, Color::RGBA(30, 30, 30, 60)),
+        }
     }
 }
 
-fn vertical_pos(ty: ButtonType) -> i32 {
+fn vertical_pos(ty: ButtonType) -> f32 {
     match ty {
-        ButtonType::Play => 300,
-        ButtonType::LevelSelect => 450,
-        ButtonType::Options => 600,
+        ButtonType::Play => 300.0,
+        ButtonType::LevelSelect => 450.0,
+        ButtonType::Options => 600.0,
     }
 }
 
-fn draw_text_texture(
-    texture: &Texture,
-    canvas: &mut Canvas<Window>,
-    offset: i32,
-    scale_multiplier: f32,
-    vertical_pos: i32,
-    horizontal_offset: i32,
-) -> crate::render::DrawResult {
-    const FONT_SIZE_MULTIPLIER: f32 = 1.43;
-    let height = texture.height() as f32 * FONT_SIZE_MULTIPLIER * scale_multiplier;
-
-    canvas.copy_ex(
-        texture,
-        None,
-        Rect::new(
-            (crate::WIDTH as i32 / 2) - (276.0 * scale_multiplier) as i32
-                + offset
-                + horizontal_offset,
-            vertical_pos - height as i32 / 2 + offset,
-            (texture.width() as f32 * FONT_SIZE_MULTIPLIER * scale_multiplier) as u32,
-            height as u32,
-        ),
-        0.0,
-        None,
-        false,
-        false,
-    )
-}
-
-fn button_rect(base: &ButtonBase, horizontal_offset: i32) -> Rect {
+fn button_rect(base: &ButtonBase, horizontal_offset: f32) -> FRect {
     let scale = base.scale_multiplier();
-    Rect::from_center(
-        Point::new(
-            crate::WIDTH as i32 / 2 + horizontal_offset,
+    FRect::from_center(
+        FPoint::new(
+            crate::WIDTH as f32 / 2.0 + horizontal_offset,
             vertical_pos(base.ty),
         ),
-        (600.0 * scale) as u32,
-        (150.0 * scale) as u32,
+        600.0 * scale,
+        150.0 * scale,
     )
 }
 
@@ -131,7 +85,7 @@ impl Render for ButtonBase {
         const BUTTON_SIZE: f32 = 128.0;
 
         let t = data.transition_offset(2.0);
-        let horizontal_offset = (t * t) as i32;
+        let horizontal_offset = t * t;
 
         data.canvas.copy_ex(
             &data.textures.title.button,
@@ -144,15 +98,14 @@ impl Render for ButtonBase {
         )?;
         data.canvas.copy_ex(
             &data.textures.title.button_icons,
-            Rect::new(64 * (self.ty as u8) as i32, 0, 64, 64),
-            Rect::from_center(
-                Point::new(
-                    (crate::WIDTH as i32 / 2 + horizontal_offset)
-                        + (225.0 * scale_multiplier) as i32,
-                    vertical_pos - 3,
+            FRect::new(64.0 * (self.ty as u8) as f32, 0.0, 64.0, 64.0),
+            FRect::from_center(
+                FPoint::new(
+                    (crate::WIDTH as f32 / 2.0 + horizontal_offset) + 225.0 * scale_multiplier,
+                    vertical_pos - 3.0,
                 ),
-                (BUTTON_SIZE * scale_multiplier) as u32,
-                (BUTTON_SIZE * scale_multiplier) as u32,
+                BUTTON_SIZE * scale_multiplier,
+                BUTTON_SIZE * scale_multiplier,
             ),
             0.0,
             None,
@@ -163,32 +116,35 @@ impl Render for ButtonBase {
         // Render the text.
         let ExtractedFontTextureSet { top, bottom } = data.textures.title.texts.set(self.ty);
 
-        draw_text_texture(
-            bottom,
+        const FONT_SIZE_MULTIPLIER: f32 = 1.43;
+        let text_size_multiplier = FONT_SIZE_MULTIPLIER * scale_multiplier;
+        let horizontal_pos =
+            crate::WIDTH as f32 / 2.0 - 270.0 * scale_multiplier + horizontal_offset;
+
+        bottom.update(data.canvas, data.font, self.ty.title())?;
+        bottom.draw(
             data.canvas,
-            3,
-            scale_multiplier,
-            vertical_pos,
-            horizontal_offset,
+            TextAlignment::Left,
+            FPoint::new(horizontal_pos + 3.0, vertical_pos + 3.0),
+            text_size_multiplier,
         )?;
-        draw_text_texture(
-            top,
+
+        top.update(data.canvas, data.font, self.ty.title())?;
+        top.draw(
             data.canvas,
-            0,
-            scale_multiplier,
-            vertical_pos,
-            horizontal_offset,
+            TextAlignment::Left,
+            FPoint::new(horizontal_pos, vertical_pos),
+            text_size_multiplier,
         )?;
 
         Ok(())
     }
 }
 
-// TODO
 impl Logic for ButtonBase {
     fn run_logic(&mut self, data: &mut LogicData) {
-        let point = data.mouse_pos();
-        let hovered = button_rect(self, 0).contains_point(point);
+        let point = data.mouse_fpos();
+        let hovered = button_rect(self, 0.0).contains_point(point);
 
         self.update_hold_time(data.delta_time, hovered);
 

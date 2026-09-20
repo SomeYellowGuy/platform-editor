@@ -1,19 +1,23 @@
 use platform_editor_core::{
     common_util::Vec2f,
     component::{
-        ComponentId, QueuedComponent,
+        ComponentId, Event, QueuedComponent,
         level::{board::BoardBase, end_dialog::EndDialogBase},
     },
     level::ENTITY_SIZE,
 };
-use sdl3::{keyboard::Scancode, pixels::Color, render::FPoint};
+use sdl3::{
+    keyboard::Scancode,
+    pixels::Color,
+    render::{FPoint, FRect},
+};
 
 use crate::{
     HEIGHT, WIDTH,
     component::Component,
     logic::Logic,
     render::Render,
-    util::{fpos_to_fpoint, frect_from_center},
+    util::{FRectExt, IntoFPoint},
 };
 
 pub const TILE_SIZE: f32 = 60.0;
@@ -34,7 +38,7 @@ fn pos_to_screen(base: &BoardBase, pos: Vec2f, offset: f32) -> Vec2f {
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
 fn pos_to_screen_point(base: &BoardBase, pos: Vec2f, offset: f32) -> FPoint {
-    fpos_to_fpoint(pos_to_screen(base, pos, offset))
+    pos_to_screen(base, pos, offset).into_fpoint()
 }
 
 impl Render for BoardBase {
@@ -48,8 +52,8 @@ impl Render for BoardBase {
         let level_center = LEVEL_CENTER - Vec2f::new(offset, 0.0);
 
         data.canvas.set_draw_color(Color::RGBA(30, 30, 30, 180));
-        data.canvas.fill_rect(frect_from_center(
-            fpos_to_fpoint(level_center),
+        data.canvas.fill_rect(FRect::from_center(
+            level_center.into_fpoint(),
             width as f32 * TILE_SIZE + 20.0,
             height as f32 * TILE_SIZE + 20.0,
         ))?;
@@ -59,7 +63,7 @@ impl Render for BoardBase {
                 // Draw the white tile texture.
                 let center =
                     pos_to_screen(self, Vec2f::new(x as f32 + 0.5, y as f32 + 0.5), offset);
-                let rect = frect_from_center(fpos_to_fpoint(center), TILE_SIZE, TILE_SIZE);
+                let rect = FRect::from_center(center.into_fpoint(), TILE_SIZE, TILE_SIZE);
                 data.canvas.copy_ex(
                     &data.textures.level.tiles.empty,
                     None,
@@ -84,7 +88,7 @@ impl Render for BoardBase {
         data.canvas.copy_ex(
             &data.textures.level.player,
             None,
-            frect_from_center(
+            FRect::from_center(
                 player_center,
                 ENTITY_SIZE * TILE_SIZE,
                 ENTITY_SIZE * TILE_SIZE,
@@ -97,11 +101,24 @@ impl Render for BoardBase {
 
         // Draw the flag.
         let flag_center = pos_to_screen_point(self, self.state.flag.pos, offset);
-        let flag_animation_state = (data.oscillation_angle(16.0) as usize) % 9;
+        let (texture, width_mul, height_mul) = if let Some(instant) = self.state.finish_instant {
+            const FLAG_HIT_ANIMATION_DURATION: f32 = 0.6;
+            // 1 - start, 0 - end
+            let t: f32 = 1.0 - instant.elapsed().as_secs_f32() / FLAG_HIT_ANIMATION_DURATION;
+            let hit_scale_multplier = if t > 0.0 { 1.0 + (t * t) * 0.3 } else { 1.0 };
+            (
+                &data.textures.level.hit_flag,
+                hit_scale_multplier * 1.4,
+                hit_scale_multplier * 1.6,
+            )
+        } else {
+            let flag_animation_state = (data.oscillation_angle(16.0) as usize) % 9;
+            (&data.textures.level.flags[flag_animation_state], 0.9, 1.0)
+        };
         data.canvas.copy_ex(
-            &data.textures.level.flags[flag_animation_state],
+            texture,
             None,
-            frect_from_center(flag_center, 0.9 * TILE_SIZE, TILE_SIZE),
+            FRect::from_center(flag_center, width_mul * TILE_SIZE, height_mul * TILE_SIZE),
             0.0,
             None,
             false,
@@ -119,6 +136,7 @@ impl Logic for BoardBase {
             // Finish the level. Add an end dialog.
             self.state.mark_finished();
 
+            data.queue_event(Event::LevelFinish);
             data.queue_component(QueuedComponent {
                 id: ComponentId::EndDialog,
                 component: Component::EndDialog(EndDialogBase::from_level_state(&self.state)),
@@ -127,7 +145,7 @@ impl Logic for BoardBase {
             });
         }
 
-        if !self.state.finished {
+        if !self.state.is_finished() {
             self.state.player.apply_controls(
                 data.is_held(Scancode::Left),
                 data.is_held(Scancode::Right),

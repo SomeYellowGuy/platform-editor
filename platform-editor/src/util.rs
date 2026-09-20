@@ -1,45 +1,57 @@
-use platform_editor_core::common_util::Vec2f;
+use platform_editor_core::common_util::Vec2;
 use sdl3::{
-    pixels::Color,
     rect::Rect,
-    render::{FPoint, FRect, Texture},
+    render::{FPoint, FRect},
 };
 
-use crate::render::{DrawResult, RenderData};
+/// An external trait that provides extraneous [`FRect`] methods.
+pub trait FRectExt {
+    /// Creates this rectangle from a center position and a width and height.
+    fn from_center(center: FPoint, width: f32, height: f32) -> FRect;
 
-/// Creates an [`FRect`] from a center position and a width and height.
-pub fn frect_from_center(center: FPoint, width: f32, height: f32) -> FRect {
-    FRect::new(
-        center.x - width / 2.0,
-        center.y - height / 2.0,
-        width,
-        height,
-    )
+    /// Returns whether this rectangle contains the given point.
+    fn contains_point(self, point: FPoint) -> bool;
+
+    /// Converts this rectangle into a [`Rect`].
+    fn into_rect(self) -> Rect;
 }
 
-/// Casts an [`FRect`] to a [`Rect`].
-pub fn frect_to_rect(rect: FRect) -> Rect {
-    Rect::new(rect.x as i32, rect.y as i32, rect.w as u32, rect.h as u32)
+impl FRectExt for FRect {
+    fn from_center(center: FPoint, width: f32, height: f32) -> FRect {
+        FRect::new(
+            center.x - width / 2.0,
+            center.y - height / 2.0,
+            width,
+            height,
+        )
+    }
+
+    fn contains_point(self, point: FPoint) -> bool {
+        self.x <= point.x
+            && self.x + self.w >= point.x
+            && self.y <= point.y
+            && self.y + self.h >= point.y
+    }
+
+    fn into_rect(self) -> Rect {
+        Rect::new(self.x as i32, self.y as i32, self.w as u32, self.h as u32)
+    }
 }
 
-pub fn fpos_to_fpoint(pos: Vec2f) -> FPoint {
-    FPoint::new(pos.x, pos.y)
+/// An external trait to convert a struct into an [`FPoint`].
+pub trait IntoFPoint {
+    /// Converts this point into an [`FPoint`].
+    fn into_fpoint(self) -> FPoint;
 }
 
-pub fn create_font_texture_and(
-    data: &mut RenderData,
-    text: &str,
-    color: impl Into<Color>,
-    f: impl FnOnce(&mut RenderData, Texture) -> DrawResult,
-) -> DrawResult {
-    if let Ok(surface) = data.font.render(text).blended(color)
-        && let Ok(tex) = data
-            .canvas
-            .texture_creator()
-            .create_texture_from_surface(&surface)
-    {
-        f(data, tex)
-    } else {
-        Ok(())
+impl IntoFPoint for FPoint {
+    fn into_fpoint(self) -> FPoint {
+        FPoint::new(self.x, self.y)
+    }
+}
+
+impl IntoFPoint for Vec2<f32> {
+    fn into_fpoint(self) -> FPoint {
+        FPoint::new(self.x, self.y)
     }
 }

@@ -1,7 +1,7 @@
 use platform_editor_core::component::level::item_tab::ItemTabBase;
-use sdl3::{pixels::Color, rect::Rect, render::FRect};
+use sdl3::{pixels::Color, rect::Rect, render::FPoint};
 
-use crate::{WIDTH, logic::Logic, render::Render};
+use crate::{WIDTH, logic::Logic, render::Render, textures::TextAlignment};
 
 impl Render for ItemTabBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
@@ -24,21 +24,14 @@ impl Render for ItemTabBase {
         ))?;
 
         const TEXT_SCALE: f32 = 1.5;
-        let tex = &data.textures.level.items_text;
-        let height = tex.height() as f32 * TEXT_SCALE;
-        data.canvas.copy_ex(
-            tex,
-            None,
-            FRect::new(
-                20.0,
-                (HEADER_HEIGHT as f32 - height) / 2.0 - 5.0 - offset,
-                tex.width() as f32 * TEXT_SCALE,
-                height,
-            ),
-            0.0,
-            None,
-            false,
-            false,
+        let tex = &mut data.textures.level.items_text;
+
+        tex.update(data.canvas, data.font, "ITEMS")?;
+        tex.draw(
+            data.canvas,
+            TextAlignment::Left,
+            FPoint::new(20.0, HEADER_HEIGHT as f32 / 2.0 - 5.0 - offset),
+            TEXT_SCALE,
         )?;
 
         Ok(())

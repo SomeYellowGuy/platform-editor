@@ -9,13 +9,13 @@ use platform_editor_core::{
 };
 use sdl3::{
     mouse::MouseButton,
-    render::{BlendMode, FPoint},
+    render::{BlendMode, FPoint, FRect},
 };
 
 use crate::{
     logic::{Logic, LogicData},
     render::{DrawResult, Render, RenderData},
-    util,
+    util::FRectExt,
 };
 
 pub mod level;
@@ -37,7 +37,7 @@ impl Render for BackButtonBase {
         data.canvas.copy_ex(
             &data.textures.back_button,
             None,
-            util::frect_from_center(
+            FRect::from_center(
                 FPoint::new(self.pos.0 as f32, self.pos.1 as f32),
                 size,
                 size,
