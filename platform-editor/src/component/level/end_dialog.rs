@@ -129,8 +129,8 @@ fn render_stars(
     let elapsed_for_stars =
         elapsed - EndDialogBase::DELAY - EndDialogBase::FADE_IN_TIME - EndDialogBase::STAR_DELAY;
     let stars_updated = 1.0
-        + (elapsed_for_stars / EndDialogBase::STAR_ANIMATION_DURATION).clamp(0.0, 1.0)
-            * star_statuses.len() as f32;
+        + (elapsed_for_stars / EndDialogBase::STAR_ANIMATION_DURATION).max(0.0)
+            * (star_statuses.len() as f32);
 
     let mut angle: f64 = star_statuses.len() as f64 * -STAR_ANGLE_GAP / 2.0;
     data.textures
@@ -173,7 +173,7 @@ pub const ICON_SCALE: f32 = 0.85;
 pub const MAX_ICON_SIZE: u32 = 100;
 pub const STAR_CIRCLE_RADIUS: f32 = 900.0;
 pub const STAR_CIRCLE_CONDITION_RADIUS: f32 = 770.0;
-pub const MAX_STAR_CONDITION_NUMBER_SHIFT: f32 = 40.0;
+pub const MAX_STAR_CONDITION_NUMBER_WIDTH: f32 = 60.0;
 
 fn render_star(
     data: &mut RenderData,
@@ -193,7 +193,7 @@ fn render_star(
     );
 
     let individual_width = (tex.width() / 2) as f32;
-    let collected = true && status.is_none_or(|s| s.collected);
+    let collected = status.is_none_or(|s| s.collected);
     let stars_updated_diff = stars_updated - (i + 1) as f32;
 
     let src = FRect::new(
@@ -226,6 +226,8 @@ fn render_star(
         false,
     )?;
 
+    // Draw the star condition (icon + possible number)
+
     let condition_texture = data
         .textures
         .icons
@@ -245,15 +247,17 @@ fn render_star(
     {
         let text = &mut data.textures.level.end_dialog.number_texts[i - 1];
         text.set_alpha_mod(alpha_mod);
-        let shift = text.width().min(MAX_STAR_CONDITION_NUMBER_SHIFT);
-
         text.update(data.canvas, data.font, number.to_string())?;
+
+        let shift = 18.0;
+        let text_scale = (MAX_STAR_CONDITION_NUMBER_WIDTH / text.width()).min(1.0);
+
         star_condition_pos += Vec2f::new(shift, 0.0);
         text.draw(
             data.canvas,
-            TextAlignment::Center,
+            TextAlignment::Left,
             star_condition_pos.into_fpoint(),
-            1.0,
+            text_scale,
         )?;
 
         star_condition_pos -= Vec2f::new(2.0 * shift, 0.0);

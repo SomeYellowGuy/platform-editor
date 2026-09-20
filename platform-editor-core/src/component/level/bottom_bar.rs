@@ -25,13 +25,18 @@ impl TimeState {
     pub fn time_counter(&self) -> u32 {
         match self {
             Self::Stationary => 0,
-            Self::Active(instant) => instant.elapsed().as_secs().min(999) as u32,
+            Self::Active(instant) => instant
+                .elapsed()
+                .as_secs()
+                .min(BottomBarBase::MAX_DISPLAY_TIME) as u32,
             Self::Finished(time) => *time,
         }
     }
 }
 
 impl BottomBarBase {
+    pub const MAX_DISPLAY_TIME: u64 = 999;
+
     pub fn new() -> Self {
         Self::default()
     }

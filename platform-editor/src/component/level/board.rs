@@ -4,6 +4,7 @@ use platform_editor_core::{
         ComponentId, Event, QueuedComponent,
         level::{
             board::BoardBase,
+            bottom_bar::BottomBarBase,
             end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType},
         },
     },
@@ -140,7 +141,13 @@ impl Logic for BoardBase {
             // Finish the level. Add an end dialog.
             self.state.mark_finished();
 
-            let displayed_time = self.state.go_instant.unwrap().elapsed().as_secs().min(999) as u32;
+            let displayed_time = self
+                .state
+                .go_instant
+                .unwrap()
+                .elapsed()
+                .as_secs()
+                .min(BottomBarBase::MAX_DISPLAY_TIME) as u32;
 
             data.queue_event(Event::LevelFinish(displayed_time));
             data.queue_component(QueuedComponent {

@@ -49,7 +49,19 @@ impl Render for BottomBarBase {
             0.9,
         )?;
 
-        // Draw the time text.
+        // Draw the time icon and text.
+        const TIME_ICON_SIZE: f32 = 50.0;
+        const TIME_TEXT_X: f32 = 450.0;
+        data.canvas.copy(
+            &data.textures.icons.time,
+            None,
+            FRect::from_center(
+                FPoint::new(TIME_TEXT_X - TIME_ICON_SIZE / 2.0 - 10.0, text_y),
+                TIME_ICON_SIZE,
+                TIME_ICON_SIZE,
+            ),
+        )?;
+
         let time = self.state.time_counter();
         data.textures.level.bottom_bar.time_text.update(
             data.canvas,
@@ -58,8 +70,8 @@ impl Render for BottomBarBase {
         )?;
         data.textures.level.bottom_bar.time_text.draw(
             data.canvas,
-            TextAlignment::Right,
-            FPoint::new(600.0, text_y),
+            TextAlignment::Left,
+            FPoint::new(TIME_TEXT_X, text_y),
             1.0,
         )?;
 
