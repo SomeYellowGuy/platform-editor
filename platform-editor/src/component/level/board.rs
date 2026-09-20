@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const TILE_SIZE: f32 = 60.0;
-pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 35.0);
+pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 28.0);
 
 /// Converts a position in *level space* to a [`Vec2f`] on the actual screen.
 ///
@@ -140,7 +140,9 @@ impl Logic for BoardBase {
             // Finish the level. Add an end dialog.
             self.state.mark_finished();
 
-            data.queue_event(Event::LevelFinish);
+            let displayed_time = self.state.go_instant.unwrap().elapsed().as_secs().min(999) as u32;
+
+            data.queue_event(Event::LevelFinish(displayed_time));
             data.queue_component(QueuedComponent {
                 id: ComponentId::EndDialog,
                 component: Component::EndDialog(EndDialogBase::from_level_state(&self.state)),
@@ -155,7 +157,7 @@ impl Logic for BoardBase {
                         &self.state,
                         ty,
                     )),
-                    render_priority: 30,
+                    render_priority: 1000,
                     logic_priority: 20,
                 });
             }
@@ -170,7 +172,10 @@ impl Logic for BoardBase {
             self.state.player.apply_controls(left, right, jump, delta);
 
             if go {
-                self.state.go();
+                let (instant, first_go) = self.state.go();
+                if first_go {
+                    data.queue_event(Event::LevelGo(instant));
+                }
             }
         }
     }

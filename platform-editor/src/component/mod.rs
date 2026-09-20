@@ -1,8 +1,9 @@
 use platform_editor_core::{
     component::{
-        BackButtonBase, BackButtonMode, Hold,
+        BackButtonBase, BackButtonMode, Event, Hold,
         level::{
             board::BoardBase,
+            bottom_bar::BottomBarBase,
             end_dialog::{EndDialogBase, EndDialogButtonBase},
             item_tab::ItemTabBase,
         },
@@ -96,6 +97,18 @@ macro_rules! impl_components {
                     $( Self:: $variant(o) => o.run_logic(data), )+
                 }
             }
+
+            fn handles_events(&self) -> bool {
+                match self {
+                    $( Self:: $variant(o) => o.handles_events(), )+
+                }
+            }
+
+            fn handle(&mut self, event: &Event) {
+                match self {
+                    $( Self:: $variant(o) => o.handle(event), )+
+                }
+            }
         }
     };
 }
@@ -112,6 +125,8 @@ pub enum Component {
 
     Board(BoardBase),
     ItemTab(ItemTabBase),
+    BottomBar(BottomBarBase),
+
     EndDialog(EndDialogBase),
     EndDialogButton(EndDialogButtonBase),
 }
@@ -127,6 +142,8 @@ impl_components! {
 
     Board,
     ItemTab,
+    BottomBar,
+
     EndDialog,
     EndDialogButton
 }

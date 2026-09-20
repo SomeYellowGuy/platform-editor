@@ -96,6 +96,15 @@ pub enum StarCondition {
     Gravity(Direction),
 }
 
+impl StarCondition {
+    pub fn number_display(&self) -> Option<u32> {
+        match self {
+            Self::Time(n) | Self::Items(n) | Self::Enemies(n) | Self::EnemiesLeft(n) => Some(*n),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Entity {
     pub pos: Vec2f,

@@ -330,13 +330,13 @@ impl App {
         // Handle events and newly-added components.
         let (events, new_components) = logic_data.queued.extract();
 
-        for (_, component) in &mut components.into_iter() {
+        components.descending_iter_mut(ComponentMapQueryType::Logic, |_, component| {
             if component.handles_events() {
                 for event in &events {
                     component.handle(event);
                 }
             }
-        }
+        });
 
         let new_components_is_empty = new_components.is_empty();
         for queued in new_components {

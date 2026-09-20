@@ -1,4 +1,5 @@
 use platform_editor_core::{
+    common_util::Vec2f,
     component::{
         Hold,
         level::end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType, StarStatus},
@@ -15,8 +16,8 @@ use crate::{
     HEIGHT, WIDTH,
     logic::Logic,
     render::{DrawResult, Render, RenderData},
-    textures::TextAlignment,
-    util::{FPointExt, FRectExt},
+    textures::{DynamicText, TextAlignment},
+    util::{FPointExt, FRectExt, IntoFPoint},
 };
 
 pub const DIALOG_CENTER: FPoint = FPoint {
@@ -115,6 +116,16 @@ fn render_stars(
     alpha_mod: u8,
     star_statuses: &[StarStatus],
 ) -> DrawResult {
+    // Update the number textures.
+    if data.textures.level.end_dialog.number_texts.len() != star_statuses.len() {
+        data.textures.level.end_dialog.number_texts.clear();
+        let creator = data.canvas.texture_creator();
+        data.textures.level.end_dialog.number_texts =
+            std::iter::repeat_with(|| DynamicText::new(&creator))
+                .take(star_statuses.len())
+                .collect();
+    }
+
     let elapsed_for_stars =
         elapsed - EndDialogBase::DELAY - EndDialogBase::FADE_IN_TIME - EndDialogBase::STAR_DELAY;
     let stars_updated = 1.0
@@ -128,10 +139,19 @@ fn render_stars(
         .stars
         .set_alpha_mod(alpha_mod);
 
-    render_star(data, &mut angle, elapsed_for_stars, stars_updated, 0, None)?;
+    render_star(
+        data,
+        alpha_mod,
+        &mut angle,
+        elapsed_for_stars,
+        stars_updated,
+        0,
+        None,
+    )?;
     for (i, status) in star_statuses.iter().enumerate() {
         render_star(
             data,
+            alpha_mod,
             &mut angle,
             elapsed_for_stars,
             stars_updated,
@@ -143,8 +163,21 @@ fn render_stars(
     Ok(())
 }
 
+pub const STAR_SIZE: f32 = 150.0;
+pub const STAR_ANGLE_GAP: f64 = 10.0;
+pub const STAR_CIRCLE_CENTER: FPoint = FPoint {
+    x: WIDTH as f32 / 2.0,
+    y: 1130.0,
+};
+pub const ICON_SCALE: f32 = 0.85;
+pub const MAX_ICON_SIZE: u32 = 100;
+pub const STAR_CIRCLE_RADIUS: f32 = 900.0;
+pub const STAR_CIRCLE_CONDITION_RADIUS: f32 = 770.0;
+pub const MAX_STAR_CONDITION_NUMBER_SHIFT: f32 = 40.0;
+
 fn render_star(
     data: &mut RenderData,
+    alpha_mod: u8,
     angle: &mut f64,
     elapsed_for_stars: f32,
     stars_updated: f32,
@@ -193,18 +226,49 @@ fn render_star(
         false,
     )?;
 
+    let condition_texture = data
+        .textures
+        .icons
+        .get_mut(status.as_ref().map(|s| &s.condition));
+    condition_texture.set_alpha_mod(alpha_mod);
+    let mut star_condition_pos = Vec2f::new(
+        STAR_CIRCLE_CENTER.x + STAR_CIRCLE_CONDITION_RADIUS * sin,
+        STAR_CIRCLE_CENTER.y - STAR_CIRCLE_CONDITION_RADIUS * cos,
+    );
+    let icon_size = Vec2f::new(
+        condition_texture.width().min(MAX_ICON_SIZE) as f32,
+        condition_texture.height().min(MAX_ICON_SIZE) as f32,
+    ) * ICON_SCALE;
+
+    if i > 0
+        && let Some(number) = status.and_then(|s| s.condition.number_display())
+    {
+        let text = &mut data.textures.level.end_dialog.number_texts[i - 1];
+        text.set_alpha_mod(alpha_mod);
+        let shift = text.width().min(MAX_STAR_CONDITION_NUMBER_SHIFT);
+
+        text.update(data.canvas, data.font, number.to_string())?;
+        star_condition_pos += Vec2f::new(shift, 0.0);
+        text.draw(
+            data.canvas,
+            TextAlignment::Center,
+            star_condition_pos.into_fpoint(),
+            1.0,
+        )?;
+
+        star_condition_pos -= Vec2f::new(2.0 * shift, 0.0);
+    }
+
+    data.canvas.copy(
+        condition_texture,
+        None,
+        FRect::from_center(star_condition_pos.into_fpoint(), icon_size.x, icon_size.y),
+    )?;
+
     *angle += 10.0;
 
     Ok(())
 }
-
-pub const STAR_SIZE: f32 = 150.0;
-pub const STAR_ANGLE_GAP: f64 = 10.0;
-pub const STAR_CIRCLE_CENTER: FPoint = FPoint {
-    x: WIDTH as f32 / 2.0,
-    y: 1130.0,
-};
-pub const STAR_CIRCLE_RADIUS: f32 = 900.0;
 
 pub const BUTTON_BASE_SIZE: f32 = 160.0;
 pub const BUTTON_Y: f32 = 585.0;

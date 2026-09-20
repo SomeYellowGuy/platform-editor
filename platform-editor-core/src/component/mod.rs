@@ -1,6 +1,9 @@
-use std::collections::{
-    HashMap,
-    hash_map::{Iter, IterMut},
+use std::{
+    collections::{
+        HashMap,
+        hash_map::{Iter, IterMut},
+    },
+    time::Instant,
 };
 
 use crate::component::{level::end_dialog::EndDialogButtonType, title::button::ButtonType};
@@ -55,6 +58,7 @@ pub enum ComponentId {
     BackButton,
     Board,
     ItemTab,
+    BottomBar,
     EndDialog,
     EndDialogButton(EndDialogButtonType),
 
@@ -309,5 +313,6 @@ pub trait Hold {
 
 #[derive(Debug, Clone)]
 pub enum Event {
-    LevelFinish,
+    LevelGo(Instant),
+    LevelFinish(u32),
 }

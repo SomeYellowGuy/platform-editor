@@ -17,6 +17,8 @@ pub struct Textures<'c> {
     pub title: TitleTextures<'c>,
     pub level_select: LevelSelectTextures<'c>,
     pub level: LevelTextures<'c>,
+
+    pub icons: IconTextures<'c>,
 }
 
 fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> Option<Texture<'c>> {
@@ -49,6 +51,16 @@ impl<'c> Textures<'c> {
             },
             level_select: LevelSelectTextures::load(creator)?,
             level: LevelTextures::load(creator)?,
+            icons: IconTextures {
+                flag: load_texture(creator, "assets/gfx/icons/flag.png")?,
+
+                collect: load_texture(creator, "assets/gfx/icons/collect.png")?,
+                time: load_texture(creator, "assets/gfx/icons/time.png")?,
+                items: load_texture(creator, "assets/gfx/icons/items.png")?,
+                enemies: load_texture(creator, "assets/gfx/icons/enemies.png")?,
+                enemies_left: load_texture(creator, "assets/gfx/icons/enemies_left.png")?,
+                gravity: load_texture(creator, "assets/gfx/icons/gravity.png")?,
+            },
         })
     }
 }
@@ -89,11 +101,14 @@ impl<'c> LevelSelectTextures<'c> {
     }
 }
 
-pub type TileTextures<'c> = platform_editor_core::textures::TileTextures<Texture<'c>>;
-pub type DirectionalTextures<'c> = platform_editor_core::textures::DirectionalTextures<Texture<'c>>;
-pub type PlacedBlockTextures<'c> = platform_editor_core::textures::PlacedBlockTextures<Texture<'c>>;
+pub type TileTextures<'c> = platform_editor_core::textures::level::TileTextures<Texture<'c>>;
+pub type DirectionalTextures<'c> =
+    platform_editor_core::textures::level::DirectionalTextures<Texture<'c>>;
+pub type PlacedBlockTextures<'c> =
+    platform_editor_core::textures::level::PlacedBlockTextures<Texture<'c>>;
 pub type MovingPlacedBlockTextures<'c> =
-    platform_editor_core::textures::MovingPlacedBlockTextures<Texture<'c>>;
+    platform_editor_core::textures::level::MovingPlacedBlockTextures<Texture<'c>>;
+pub type IconTextures<'c> = platform_editor_core::textures::IconTextures<Texture<'c>>;
 
 pub struct LevelTextures<'c> {
     pub tiles: TileTextures<'c>,
@@ -105,6 +120,8 @@ pub struct LevelTextures<'c> {
     pub end_dialog: EndDialogTextures<'c>,
 
     pub items_text: DynamicText<'c>,
+
+    pub bottom_bar: BottomBarTextures<'c>,
 }
 
 impl<'c> LevelTextures<'c> {
@@ -119,6 +136,7 @@ impl<'c> LevelTextures<'c> {
             hit_flag: load_texture(creator, "assets/gfx/level/flag/hit.png")?,
             end_dialog: EndDialogTextures::load(creator)?,
             items_text: DynamicText::new(creator),
+            bottom_bar: BottomBarTextures::load(creator)?,
         })
     }
 
@@ -179,12 +197,30 @@ impl<'c> LevelTextures<'c> {
     }
 }
 
+pub struct BottomBarTextures<'c> {
+    pub base: Texture<'c>,
+    pub level_text: DynamicText<'c>,
+    pub time_text: DynamicText<'c>,
+}
+
+impl<'c> BottomBarTextures<'c> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
+        Some(Self {
+            base: load_texture(creator, "assets/gfx/level/bottom_bar/base.png")?,
+            level_text: DynamicText::new(creator),
+            time_text: DynamicText::new(creator),
+        })
+    }
+}
+
 pub struct EndDialogTextures<'c> {
     pub base: Texture<'c>,
     pub nice_text: DynamicText<'c>,
     pub level_text: DynamicText<'c>,
     pub stars: Texture<'c>,
     pub buttons: EndDialogButtonTextures<'c>,
+
+    pub number_texts: Vec<DynamicText<'c>>,
 }
 
 impl<'c> EndDialogTextures<'c> {
@@ -195,6 +231,7 @@ impl<'c> EndDialogTextures<'c> {
             level_text: DynamicText::new(creator),
             stars: load_texture(creator, "assets/gfx/level/end_dialog/stars.png")?,
             buttons: EndDialogButtonTextures::load(creator)?,
+            number_texts: Vec::new(),
         })
     }
 }

@@ -1,3 +1,4 @@
-pub mod board;
-pub mod end_dialog;
-pub mod item_tab;
+mod board;
+mod bottom_bar;
+mod end_dialog;
+mod item_tab;

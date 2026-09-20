@@ -2,7 +2,7 @@ use platform_editor_core::{
     common_util::{self, ScrollInfo},
     component::{
         BackButtonBase, BackButtonMode, ComponentId,
-        level::{board::BoardBase, item_tab::ItemTabBase},
+        level::{board::BoardBase, bottom_bar::BottomBarBase, item_tab::ItemTabBase},
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{
             TitleBase,
@@ -91,6 +91,12 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
                 15,
                 5,
             );
+            map.insert(
+                ComponentId::BottomBar,
+                Component::BottomBar(BottomBarBase::new()),
+                11,
+                10,
+            );
         }
         Screen::Options => {}
     }
@@ -116,6 +122,7 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
                 k,
                 ComponentId::Board
                     | ComponentId::ItemTab
+                    | ComponentId::BottomBar
                     | ComponentId::EndDialog
                     | ComponentId::EndDialogButton(_)
             )

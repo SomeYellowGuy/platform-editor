@@ -108,9 +108,12 @@ impl LevelState {
         }
     }
 
-    pub fn go(&mut self) {
+    pub fn go(&mut self) -> (Instant, bool) {
+        let instant = Instant::now();
         if self.go_instant.is_none() {
-            self.go_instant = Some(Instant::now());
+            self.go_instant = Some(instant);
+            return (instant, true);
         }
+        (instant, false)
     }
 }
