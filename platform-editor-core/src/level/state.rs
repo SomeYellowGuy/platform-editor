@@ -25,10 +25,13 @@ impl TileState {
 #[derive(Debug, Default, Clone)]
 pub struct LevelState {
     pub finish_instant: Option<Instant>,
+    pub go_instant: Option<Instant>,
 
     pub player: Entity,
     pub tile_state: TileState,
     pub flag: FlagState,
+
+    /// The star conditions for all stars except the first star.
     pub star_conditions: Vec<StarCondition>,
 }
 
@@ -57,6 +60,8 @@ impl LevelState {
         self.player.velocity = Vec2f::new(0.0, 0.0);
         self.player.reversed_gravity = false;
         self.flag = level.flag;
+
+        self.star_conditions = level.star_conditions.to_vec();
 
         self.finish_instant = None;
     }
@@ -87,11 +92,25 @@ impl LevelState {
         statuses
     }
 
-    pub fn is_satisfied(&self, _condition: &StarCondition) -> bool {
-        true
+    pub fn is_satisfied(&self, condition: &StarCondition) -> bool {
+        match condition {
+            StarCondition::Time(t) => self
+                .go_instant
+                .is_none_or(|s| s.elapsed().as_secs() <= *t as u64),
+
+            _ => true, // TODO
+        }
     }
 
     pub fn mark_finished(&mut self) {
-        self.finish_instant = Some(Instant::now());
+        if self.finish_instant.is_none() {
+            self.finish_instant = Some(Instant::now());
+        }
+    }
+
+    pub fn go(&mut self) {
+        if self.go_instant.is_none() {
+            self.go_instant = Some(Instant::now());
+        }
     }
 }

@@ -125,7 +125,7 @@ impl Logic for LevelSelectButtonBase {
             data.app_data.level.playing_level = self.level;
             data.set_transition_call(TransitionCall::Start(TransitionData::new(
                 800_000_000,
-                800_000_000,
+                500_000_000,
                 Screen::Level,
             )));
         }

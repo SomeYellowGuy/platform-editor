@@ -114,7 +114,10 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
         Screen::Level => map.remove_all(|k| {
             matches!(
                 k,
-                ComponentId::Board | ComponentId::ItemTab | ComponentId::EndDialog
+                ComponentId::Board
+                    | ComponentId::ItemTab
+                    | ComponentId::EndDialog
+                    | ComponentId::EndDialogButton(_)
             )
         }),
         Screen::Options => {}

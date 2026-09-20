@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use platform_editor_core::screen::SharedTransitionData;
 use sdl3::{
     Error,
     rect::{Point, Rect},
@@ -10,7 +11,7 @@ use sdl3::{
 
 use crate::{App, AppData, ExtractedData, textures::Textures};
 
-pub type DrawResult = Result<(), Error>;
+pub type DrawResult<T = ()> = Result<T, Error>;
 
 /// Useful data for rendering.
 pub struct RenderData<'window, 'i, 'c> {
@@ -19,7 +20,7 @@ pub struct RenderData<'window, 'i, 'c> {
     pub font: &'static Font<'static>,
     pub start: Instant,
     /// The current transition's data, if any.
-    pub transition_time: Option<u64>,
+    pub transition: Option<SharedTransitionData>,
     pub extracted_data: &'i ExtractedData,
 }
 
@@ -30,7 +31,7 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
         data: &'window AppData,
         textures: &'i mut Textures<'c>,
         font: &'static Font,
-        transition_time: Option<u64>,
+        transition: Option<SharedTransitionData>,
         extracted: &'i ExtractedData,
     ) -> Self {
         Self {
@@ -38,7 +39,7 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
             textures,
             start: data.start,
             font,
-            transition_time,
+            transition,
             extracted_data: extracted,
         }
     }
@@ -51,7 +52,7 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     #[must_use]
     #[allow(clippy::cast_precision_loss)]
     pub fn oscillation_angle(&self, multiplier: f64) -> f64 {
-        self.start.elapsed().as_nanos() as f64 / 1_000_000_000.0 * multiplier
+        self.start.elapsed().as_secs_f64() * multiplier
     }
 
     /// Returns a transition offset at the current instant with the provided multiplier.
@@ -63,7 +64,13 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     #[must_use]
     #[allow(clippy::cast_precision_loss)]
     pub fn transition_offset(&self, multiplier: f32) -> f32 {
-        (self.transition_time.unwrap_or(0) / 1_000_000) as f32 / 40.0 * multiplier
+        (self
+            .transition
+            .as_ref()
+            .map_or(0, SharedTransitionData::time)
+            / 1_000_000) as f32
+            / 40.0
+            * multiplier
     }
 }
 

@@ -75,9 +75,59 @@ impl TransitionData {
         }
     }
 
-    fn time(&self) -> u64 {
+    pub fn time(&self) -> u64 {
         match self {
             Self::Entry { duration, .. } | Self::Exit { duration, .. } => *duration,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum SharedTransitionData {
+    Entry {
+        // The total duration of the transition.
+        time: u64,
+        /// The previous screen.
+        previous_screen: Screen,
+    },
+    Exit {
+        // The total duration of the transition.
+        time: u64,
+        /// The new screen.
+        new_screen: Screen,
+    },
+}
+
+impl SharedTransitionData {
+    /// Returns whether the data points to being an entry transition where
+    /// the previous screen is `screen`.
+    pub fn is_entry_from(&self, screen: Screen) -> bool {
+        if let Self::Entry {
+            previous_screen, ..
+        } = &self
+            && *previous_screen == screen
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Returns whether the data points to being an exit transition where
+    /// the next screen is `screen`.
+    pub fn is_exit_to(&self, screen: Screen) -> bool {
+        if let Self::Exit { new_screen, .. } = &self
+            && *new_screen == screen
+        {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn time(&self) -> u64 {
+        match self {
+            Self::Entry { time, .. } | Self::Exit { time, .. } => *time,
         }
     }
 }
@@ -136,6 +186,24 @@ impl ScreenManager {
                 self.internal_time()
             } else {
                 data.time().saturating_sub(self.internal_time())
+            }
+        })
+    }
+
+    /// Returns the transition data of this manager, if any.
+    pub fn transition_data(&self) -> Option<SharedTransitionData> {
+        self.transition_data.map(|d| {
+            let time = self.time().unwrap();
+            match d {
+                TransitionData::Entry {
+                    previous_screen, ..
+                } => SharedTransitionData::Entry {
+                    time,
+                    previous_screen,
+                },
+                TransitionData::Exit { new_screen, .. } => {
+                    SharedTransitionData::Exit { time, new_screen }
+                }
             }
         })
     }

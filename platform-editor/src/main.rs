@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use platform_editor_core::LevelSave;
 use platform_editor_core::component::ComponentMapQueryType;
 use platform_editor_core::options::Options;
-use platform_editor_core::screen::{Screen, ScreenManager, TransitionCall};
+use platform_editor_core::screen::{Screen, ScreenManager, SharedTransitionData, TransitionCall};
 use sdl3::EventPump;
 use sdl3::event::Event;
 use sdl3::pixels::Color;
@@ -302,7 +302,7 @@ impl App {
                 images,
                 font,
                 components,
-                transition_manager.time(),
+                transition_manager.transition_data(),
                 &extracted,
             )
             .err()
@@ -353,7 +353,7 @@ impl App {
         images: &mut Textures,
         font: &'static Font,
         components: &mut ComponentMap,
-        transition_time: Option<u64>,
+        transition: Option<SharedTransitionData>,
         extracted: &ExtractedData,
     ) -> DrawResult {
         self.canvas.set_draw_color(Color::RGB(10, 10, 10));
@@ -362,7 +362,7 @@ impl App {
         self.canvas.set_draw_color(Color::RGB(60, 60, 60));
         self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        let mut data = RenderData::new(self, data, images, font, transition_time, extracted);
+        let mut data = RenderData::new(self, data, images, font, transition, extracted);
 
         data.canvas.set_blend_mode(BlendMode::None);
         Background.render(&mut data)?;

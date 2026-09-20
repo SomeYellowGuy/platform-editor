@@ -46,12 +46,32 @@ pub trait IntoFPoint {
 
 impl IntoFPoint for FPoint {
     fn into_fpoint(self) -> FPoint {
-        FPoint::new(self.x, self.y)
+        self
     }
 }
 
 impl IntoFPoint for Vec2<f32> {
     fn into_fpoint(self) -> FPoint {
         FPoint::new(self.x, self.y)
+    }
+}
+
+/// An external trait that provides extraneous [`FPoint`] methods.
+pub trait FPointExt: Sized {
+    /// Returns the squared distance of this point from the other one.
+    fn distance_sqr(self, other: impl IntoFPoint) -> f32;
+
+    /// Returns the distance of this point from the other one.
+    fn distance(self, other: impl IntoFPoint) -> f32 {
+        self.distance_sqr(other).sqrt()
+    }
+}
+
+impl FPointExt for FPoint {
+    fn distance_sqr(self, other: impl IntoFPoint) -> f32 {
+        let other = other.into_fpoint();
+        let dx = self.x - other.x;
+        let dy = self.y - other.y;
+        dx * dx + dy * dy
     }
 }

@@ -3,7 +3,7 @@ use std::collections::{
     hash_map::{Iter, IterMut},
 };
 
-use crate::component::title::button::ButtonType;
+use crate::component::{level::end_dialog::EndDialogButtonType, title::button::ButtonType};
 
 pub mod level;
 pub mod level_select;
@@ -56,6 +56,7 @@ pub enum ComponentId {
     Board,
     ItemTab,
     EndDialog,
+    EndDialogButton(EndDialogButtonType),
 
     Other(usize),
 }

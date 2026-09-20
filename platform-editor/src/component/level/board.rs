@@ -2,7 +2,10 @@ use platform_editor_core::{
     common_util::Vec2f,
     component::{
         ComponentId, Event, QueuedComponent,
-        level::{board::BoardBase, end_dialog::EndDialogBase},
+        level::{
+            board::BoardBase,
+            end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType},
+        },
     },
     level::ENTITY_SIZE,
 };
@@ -23,11 +26,12 @@ use crate::{
 pub const TILE_SIZE: f32 = 60.0;
 pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 35.0);
 
-/// Converts a position in *level space* to a [`FPos`] one on the actual screen.
+/// Converts a position in *level space* to a [`Vec2f`] on the actual screen.
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
 fn pos_to_screen(base: &BoardBase, pos: Vec2f, offset: f32) -> Vec2f {
-    LEVEL_CENTER - Vec2f::new(offset, 0.0)
+    LEVEL_CENTER
+        + Vec2f::new(0.0, offset)
         + Vec2f::new(
             pos.x - base.state.tile_state.size.x as f32 / 2.0,
             pos.y - base.state.tile_state.size.y as f32 / 2.0,
@@ -49,7 +53,7 @@ impl Render for BoardBase {
         let t = data.transition_offset(1.8);
         let offset = t * t;
 
-        let level_center = LEVEL_CENTER - Vec2f::new(offset, 0.0);
+        let level_center = LEVEL_CENTER + Vec2f::new(0.0, offset);
 
         data.canvas.set_draw_color(Color::RGBA(30, 30, 30, 180));
         data.canvas.fill_rect(FRect::from_center(
@@ -143,15 +147,31 @@ impl Logic for BoardBase {
                 render_priority: 20,
                 logic_priority: 10,
             });
+
+            for ty in EndDialogButtonType::ALL {
+                data.queue_component(QueuedComponent {
+                    id: ComponentId::EndDialogButton(ty),
+                    component: Component::EndDialogButton(EndDialogButtonBase::new(
+                        &self.state,
+                        ty,
+                    )),
+                    render_priority: 30,
+                    logic_priority: 20,
+                });
+            }
         }
 
         if !self.state.is_finished() {
-            self.state.player.apply_controls(
-                data.is_held(Scancode::Left),
-                data.is_held(Scancode::Right),
-                data.is_held(Scancode::Up),
-                delta,
-            );
+            let left = data.is_held(Scancode::Left);
+            let right = data.is_held(Scancode::Right);
+            let jump = data.is_held(Scancode::Up);
+            let go = left || right || jump;
+
+            self.state.player.apply_controls(left, right, jump, delta);
+
+            if go {
+                self.state.go();
+            }
         }
     }
 }

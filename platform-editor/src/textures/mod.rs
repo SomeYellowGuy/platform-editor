@@ -183,6 +183,8 @@ pub struct EndDialogTextures<'c> {
     pub base: Texture<'c>,
     pub nice_text: DynamicText<'c>,
     pub level_text: DynamicText<'c>,
+    pub stars: Texture<'c>,
+    pub buttons: EndDialogButtonTextures<'c>,
 }
 
 impl<'c> EndDialogTextures<'c> {
@@ -191,6 +193,29 @@ impl<'c> EndDialogTextures<'c> {
             base: load_texture(creator, "assets/gfx/level/end_dialog/base.png")?,
             nice_text: DynamicText::new(creator),
             level_text: DynamicText::new(creator),
+            stars: load_texture(creator, "assets/gfx/level/end_dialog/stars.png")?,
+            buttons: EndDialogButtonTextures::load(creator)?,
+        })
+    }
+}
+
+pub struct EndDialogButtonTextures<'c> {
+    pub level_select: Texture<'c>,
+    pub next: Texture<'c>,
+    pub next_end: Texture<'c>,
+    pub retry: Texture<'c>,
+}
+
+impl<'c> EndDialogButtonTextures<'c> {
+    pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
+        Some(Self {
+            level_select: load_texture(
+                creator,
+                "assets/gfx/level/end_dialog/buttons/level_select.png",
+            )?,
+            next: load_texture(creator, "assets/gfx/level/end_dialog/buttons/next.png")?,
+            next_end: load_texture(creator, "assets/gfx/level/end_dialog/buttons/next_end.png")?,
+            retry: load_texture(creator, "assets/gfx/level/end_dialog/buttons/retry.png")?,
         })
     }
 }
