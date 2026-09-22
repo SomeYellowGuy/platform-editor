@@ -1,9 +1,14 @@
+pub mod entity;
+
 use std::time::Instant;
 
 use crate::{
-    common_util::{Direction, Vec2, Vec2f},
+    common_util::{Direction, Vec2, Vec2f, Vec2i},
     component::level::end_dialog::StarStatus,
-    level::{Entity, FlagState, ItemStack, StarCondition, Tile, scratch::StoredScratchLevel},
+    level::{
+        FlagState, ItemPlaceOutcome, ItemStack, StarCondition, Tile, scratch::StoredScratchLevel,
+        state::entity::Entity,
+    },
 };
 
 #[derive(Debug, Default, Clone)]
@@ -19,6 +24,16 @@ impl TileState {
 
     pub fn tile_mut(&mut self, x: usize, y: usize) -> &mut Tile {
         &mut self.tiles[y * self.size.x + x]
+    }
+
+    pub fn is_within_bounds(&self, tile: Vec2<i32>) -> bool {
+        (0..self.size.x as i32).contains(&tile.x) && (0..self.size.y as i32).contains(&tile.y)
+    }
+
+    pub fn clamp(&self, mut tile: Vec2i) -> Vec2<usize> {
+        tile.x = tile.x.clamp(0, (self.size.x - 1) as i32);
+        tile.y = tile.y.clamp(0, (self.size.y - 1) as i32);
+        Vec2::new(tile.x as usize, tile.y as usize)
     }
 }
 
@@ -37,6 +52,12 @@ pub struct LevelState {
     pub items: Vec<ItemStack>,
     /// The selected item stack index.
     pub selected_item: Option<usize>,
+}
+
+pub enum LevelStateOutcome {
+    None,
+    Win,
+    Lose,
 }
 
 impl LevelState {
@@ -74,14 +95,16 @@ impl LevelState {
         self.finish_instant.is_some()
     }
 
-    pub fn tick(&mut self, delta: f32) -> bool {
-        self.player.tick(&self.tile_state, delta);
+    pub fn tick(&mut self, delta: f32) -> LevelStateOutcome {
+        if !self.player.tick(&self.tile_state, delta) {
+            return LevelStateOutcome::Lose;
+        }
 
         // Check if the player touched the flag.
-        if !self.is_finished() {
-            self.flag.hitbox().intersects(self.player.hitbox())
+        if !self.is_finished() && self.flag.hitbox().intersects(self.player.hitbox()) {
+            LevelStateOutcome::Win
         } else {
-            false
+            LevelStateOutcome::None
         }
     }
 
@@ -119,5 +142,47 @@ impl LevelState {
             return (instant, true);
         }
         (instant, false)
+    }
+
+    /// Tries to place the currently-selected item on the board, returning `true`
+    /// if it was successful.
+    pub fn try_place_item(&mut self, pos: Vec2<i32>) -> bool {
+        if !self.tile_state.is_within_bounds(pos) {
+            return false;
+        }
+        let pos = pos.map(|i| i as usize);
+        if self.tile_state.tile(pos.x, pos.y) != &Tile::Empty {
+            return false;
+        }
+        let Some(stack) = self.selected_item() else {
+            return false;
+        };
+        if stack.count == 0 {
+            return false;
+        }
+        stack.count -= 1;
+        let outcome = stack.item.place_outcome();
+        // Apply the outcome.
+        self.apply_outcome(pos, outcome)
+    }
+
+    pub fn apply_outcome(&mut self, pos: Vec2<usize>, outcome: ItemPlaceOutcome) -> bool {
+        match outcome {
+            ItemPlaceOutcome::Tile(tile) => {
+                let old_tile = std::mem::replace(self.tile_state.tile_mut(pos.x, pos.y), tile);
+                // Check if the player is colliding with a tile.
+                if self.player.is_colliding_with_tiles(&self.tile_state) {
+                    // Reverse the placement.
+                    *self.tile_state.tile_mut(pos.x, pos.y) = old_tile;
+                    return false;
+                }
+                true
+            }
+            ItemPlaceOutcome::Moving(_) => todo!(),
+        }
+    }
+
+    pub fn selected_item(&mut self) -> Option<&mut ItemStack> {
+        self.selected_item.map(|i| &mut self.items[i])
     }
 }

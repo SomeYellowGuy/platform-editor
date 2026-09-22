@@ -1,6 +1,9 @@
 use std::time::Instant;
 
-use platform_editor_core::{level::state::LevelState, screen::SharedTransitionData};
+use platform_editor_core::{
+    level::state::LevelState,
+    screen::{Screen, SharedTransitionData},
+};
 use sdl3::{
     Error,
     rect::{Point, Rect},
@@ -42,6 +45,12 @@ impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
             transition,
             extracted_data: extracted,
         }
+    }
+
+    /// Returns whether a transition is currently going on whose initial
+    /// screen is `screen`.
+    pub fn transitioned_from(&self, screen: Screen) -> bool {
+        self.transition.is_some_and(|d| d.is_entry_from(screen))
     }
 
     /// Attempts to get the [`LevelState`] from some extracted data, returning an error otherwise.

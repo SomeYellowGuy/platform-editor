@@ -89,6 +89,10 @@ impl<T> Vec2<T> {
             Bidirection::Vertical => &mut self.y,
         }
     }
+
+    pub fn map<U>(self, f: impl Fn(T) -> U) -> Vec2<U> {
+        Vec2::new(f(self.x), f(self.y))
+    }
 }
 
 impl<T> From<(T, T)> for Vec2<T> {
@@ -193,31 +197,31 @@ pub struct Rectf {
 }
 
 impl Rectf {
-    /// Creates a [`Rect`] with the provided top-left position vector and dimensions.
+    /// Creates a [`Rectf`] with the provided top-left position vector and dimensions.
     #[must_use]
     pub const fn new(pos: Vec2f, dimensions: Vec2f) -> Self {
         Self { pos, dimensions }
     }
 
-    /// Creates a [`Rect`] with the provided center position vector and dimensions.
+    /// Creates a [`Rectf`] with the provided center position vector and dimensions.
     #[must_use]
     pub fn from_center(center: Vec2f, dimensions: Vec2f) -> Self {
         Self::new(center - dimensions / 2.0, dimensions)
     }
 
-    /// Creates a [`Rect`] with the provided top-left position vector, width and height.
+    /// Creates a [`Rectf`] with the provided top-left position vector, width and height.
     #[must_use]
     pub const fn from_dimensions(pos: Vec2f, width: f32, height: f32) -> Self {
         Self::new(pos, Vec2f::new(width, height))
     }
 
-    /// Creates a [`Rect`] with the provided top-left coordinates, width and height.
+    /// Creates a [`Rectf`] with the provided top-left coordinates, width and height.
     #[must_use]
     pub const fn from_xy_and_dimensions(x: f32, y: f32, width: f32, height: f32) -> Self {
         Self::from_dimensions(Vec2f::new(x, y), width, height)
     }
 
-    /// Returns whether this `Rect` contains the given point.
+    /// Returns whether this `Rectf` contains the given point.
     #[must_use]
     pub fn contains(self, point: Vec2f) -> bool {
         point.x > self.pos.x
@@ -226,7 +230,7 @@ impl Rectf {
             && point.y < self.pos.y + self.dimensions.y
     }
 
-    /// Returns whether this `Rect` intersects with the other provided `Rect`.
+    /// Returns whether this `Rectf` intersects with the other provided `Rectf`.
     #[must_use]
     pub fn intersects(self, other: Self) -> bool {
         !(self.pos.x > other.pos.x + other.dimensions.x
@@ -235,12 +239,20 @@ impl Rectf {
             || self.pos.y + self.dimensions.y < other.pos.y)
     }
 
-    /// Returns whether this `Rect` completely contains the given `Rect`.
+    /// Returns whether this `Rectf` completely contains the given `Rectf`.
     pub fn contains_rect(self, other: Self) -> bool {
-        self.pos.x <= other.pos.x
-            && self.pos.y <= other.pos.y
-            && self.pos.x + self.dimensions.x >= other.pos.x + other.dimensions.x
-            && self.pos.y + self.dimensions.y >= other.pos.y + other.dimensions.y
+        (self.pos.x..=(self.pos.x + self.dimensions.x)).contains(&other.pos.x)
+            && (self.pos.x..=(self.pos.x + self.dimensions.x)).contains(&other.pos.x)
+    }
+
+    /// Returns whether this `Rectf` touches the line `x = <x>`.
+    pub fn touches_x_line(self, x: f32) -> bool {
+        (self.pos.x..=(self.pos.x + self.dimensions.x)).contains(&x)
+    }
+
+    /// Returns whether this `Rectf` touches the line `y = <y>`.
+    pub fn touches_y_line(self, y: f32) -> bool {
+        (self.pos.y..=(self.pos.y + self.dimensions.y)).contains(&y)
     }
 }
 
@@ -285,4 +297,9 @@ impl Bidirection {
             Self::Vertical => Self::Horizontal,
         }
     }
+}
+
+/// Helper function to convert 3 RGB values to a single packed RGBA color.
+pub const fn rgb(red: u8, green: u8, blue: u8) -> u32 {
+    0xff00_0000 | (((red as u32) << 16) + ((green as u32) << 8) + blue as u32)
 }

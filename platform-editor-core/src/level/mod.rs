@@ -1,16 +1,10 @@
 use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
-    level::state::TileState,
     textures::level::TileTextures,
 };
 
 pub mod scratch;
 pub mod state;
-
-pub const ENTITY_SIZE: f32 = 0.75;
-pub const GRAVITY: f32 = 0.47;
-pub const JUMP_VELOCITY: f32 = 0.16;
-pub const MOVE_VELOCITY: f32 = 0.6;
 
 #[derive(Debug, Clone, Copy)]
 pub enum LockColor {
@@ -122,6 +116,14 @@ impl MovingBlockItem {
             Self::Vertical => Some(&textures.placed_blocks.moving.vertical),
         }
     }
+
+    pub fn icon_texture_mut<'a, T>(&self, textures: &'a mut TileTextures<T>) -> Option<&'a mut T> {
+        match self {
+            Self::Single(d) => textures.placed_blocks.moving.single.get_mut(*d),
+            Self::Horizontal => Some(&mut textures.placed_blocks.moving.horizontal),
+            Self::Vertical => Some(&mut textures.placed_blocks.moving.vertical),
+        }
+    }
 }
 
 /// A type of something that can be placed by a player.
@@ -145,6 +147,40 @@ impl Item {
             Self::Star => None,
         }
     }
+
+    pub fn icon_texture_mut<'a, T>(&self, textures: &'a mut TileTextures<T>) -> Option<&'a mut T> {
+        match self {
+            Self::Block => Some(&mut textures.placed_blocks.permanent),
+            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture_mut(*t)),
+            Self::Moving(moving_block_item) => moving_block_item.icon_texture_mut(textures),
+            // TODO
+            Self::GravityOrb => None,
+            Self::Star => None,
+        }
+    }
+
+    pub fn icon_texture_scale(&self) -> f32 {
+        match self {
+            Self::GravityOrb | Self::Star => 0.8,
+            _ => 1.0,
+        }
+    }
+
+    pub fn place_outcome(&self) -> ItemPlaceOutcome {
+        match self {
+            Self::Block => ItemPlaceOutcome::Tile(Tile::PlacedBlock),
+            Self::TimedBlock(t) => ItemPlaceOutcome::Tile(Tile::PlacedTimedBlock(*t as f32)),
+            Self::Moving(moving_block_item) => ItemPlaceOutcome::Moving(moving_block_item.clone()),
+            Self::GravityOrb => todo!(),
+            Self::Star => todo!(),
+        }
+    }
+}
+
+pub enum ItemPlaceOutcome {
+    Tile(Tile),
+    Moving(MovingBlockItem),
+    // TODO: Add collectable outcome
 }
 
 /// Represents a type of item (which can be placed) and its remaining count.
@@ -157,120 +193,5 @@ pub struct ItemStack {
 impl ItemStack {
     pub const fn new(item: Item, count: u32) -> Self {
         Self { item, count }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Entity {
-    pub pos: Vec2f,
-    pub velocity: Vec2f,
-    pub gravity_direction: Direction,
-
-    is_falling: bool,
-}
-
-impl Default for Entity {
-    fn default() -> Self {
-        Self {
-            pos: Default::default(),
-            velocity: Default::default(),
-            gravity_direction: Direction::Down,
-            is_falling: Default::default(),
-        }
-    }
-}
-
-impl Entity {
-    pub fn hitbox(&self) -> Rectf {
-        Rectf::from_center(self.pos, Vec2::new(ENTITY_SIZE, ENTITY_SIZE))
-    }
-
-    pub fn gravity(&self) -> Vec2f {
-        self.gravity_direction.unit_vec2f() * GRAVITY
-    }
-
-    pub fn tick(&mut self, tiles: &TileState, delta: f32) {
-        // Apply gravity.
-        self.velocity += self.gravity() * delta;
-
-        // Apply friction.
-        let non_gravity_component = self
-            .velocity
-            .get_mut(self.gravity_direction.bidirection().other());
-        *non_gravity_component *= 0.85_f32.powf(delta * 30.0);
-
-        // Move the entity.
-        self.move_in_steps(tiles);
-    }
-
-    pub fn apply_controls(&mut self, left: bool, right: bool, jump: bool, delta: f32) {
-        let horizontal = -(left as i8) + (right as i8);
-        self.velocity.x += horizontal as f32 * delta * MOVE_VELOCITY;
-
-        if !self.is_falling && jump {
-            let new_velocity = -JUMP_VELOCITY * self.gravity_multiplier();
-            let gravity_component = self.velocity.get_mut(self.gravity_direction.bidirection());
-            *gravity_component = new_velocity;
-        }
-    }
-
-    pub fn move_in_steps(&mut self, tiles: &TileState) {
-        let quality = ((self.velocity.x.abs() + self.velocity.y.abs()).ceil() * 5.0) as usize;
-        self.is_falling = true;
-
-        for _ in 0..quality {
-            let x = self.pos.x;
-            self.pos.x += self.velocity.x / quality as f32;
-            if self.is_colliding_with_tiles(tiles) {
-                self.pos.x = x;
-                self.velocity.x = 0.0;
-                break;
-            }
-        }
-        for _ in 0..quality {
-            let y = self.pos.y;
-            self.pos.y += self.velocity.y / quality as f32;
-            if self.is_colliding_with_tiles(tiles) {
-                if self.velocity.y * self.gravity_multiplier() > 0.0 {
-                    self.is_falling = false;
-                }
-                self.pos.y = y;
-                self.velocity.y = 0.0;
-                break;
-            }
-        }
-    }
-
-    fn gravity_multiplier(&self) -> f32 {
-        match self.gravity_direction {
-            Direction::Up | Direction::Left => -1.0,
-            Direction::Down | Direction::Right => 1.0,
-        }
-    }
-
-    pub fn is_colliding_with_tiles(&self, tiles: &TileState) -> bool {
-        let hitbox = self.hitbox();
-
-        if !Rectf::new(
-            Vec2f::new(0.0, 0.0),
-            Vec2f::new(tiles.size.x as f32, tiles.size.y as f32),
-        )
-        .contains_rect(hitbox)
-        {
-            return true;
-        }
-
-        for y in 0..tiles.size.y {
-            for x in 0..tiles.size.x {
-                if *tiles.tile(x, y) == Tile::Empty {
-                    continue;
-                }
-                let tile_hitbox = Rectf::from_xy_and_dimensions(x as f32, y as f32, 1.0, 1.0);
-                if tile_hitbox.intersects(hitbox) {
-                    return true;
-                }
-            }
-        }
-        false
     }
 }

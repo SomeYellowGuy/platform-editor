@@ -3,7 +3,7 @@ use std::{borrow::Cow, ffi::CString, marker::PhantomData, ptr};
 use platform_editor_core::common_util::Vec2;
 use sdl3::{
     get_error,
-    pixels::Color,
+    pixels::{Color, PixelFormat},
     render::{Canvas, FPoint, FRect, TextureCreator},
     ttf::{Font, sys::TTF_RenderText_Blended},
     video::{Window, WindowContext},
@@ -160,6 +160,11 @@ impl DynamicText<'_> {
     /// Sets the color of this texture.
     pub fn set_color_mod(&mut self, color: impl Into<Color>) {
         self.color = color.into();
+    }
+
+    /// Sets the color of this texture to the provided packed 32-bit color.
+    pub fn set_color_mod_u32(&mut self, color: u32) {
+        self.color = Color::from_u32(&PixelFormat::ARGB8888, color);
     }
 
     /// Returns the dimensions (both width and height) of this text

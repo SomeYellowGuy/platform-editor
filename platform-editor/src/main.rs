@@ -127,6 +127,7 @@ pub struct ExtractedData<'i> {
     pub y_scroll: f32,
     pub playing_level: usize,
     pub level_state: Option<&'i LevelState>,
+    pub mouse_pos: FPoint,
 }
 
 impl App {
@@ -280,6 +281,8 @@ impl App {
             queued: QueuedData::new(),
         };
 
+        let mouse_pos = logic_data.mouse_fpos();
+
         let call = if !transition_manager.is_transitioning() {
             self.run_game_logic(components, &mut logic_data, transition_manager.screen);
             logic_data.transition_call
@@ -300,6 +303,7 @@ impl App {
             y_scroll: app_data.level_select_scroll,
             playing_level: app_data.level.playing_level,
             level_state: app_data.level_state.as_ref(),
+            mouse_pos,
         };
 
         if let Some(e) = Self::render(

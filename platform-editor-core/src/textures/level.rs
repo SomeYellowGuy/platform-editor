@@ -20,6 +20,15 @@ impl<T> DirectionalTextures<T> {
             Direction::Right => self.textures[3].as_ref(),
         }
     }
+
+    pub fn get_mut(&mut self, direction: Direction) -> Option<&mut T> {
+        match direction {
+            Direction::Up => self.textures[0].as_mut(),
+            Direction::Down => self.textures[1].as_mut(),
+            Direction::Left => self.textures[2].as_mut(),
+            Direction::Right => self.textures[3].as_mut(),
+        }
+    }
 }
 pub struct PlacedBlockTextures<T> {
     pub moving: MovingPlacedBlockTextures<T>,
@@ -28,9 +37,14 @@ pub struct PlacedBlockTextures<T> {
 }
 
 impl<T> PlacedBlockTextures<T> {
-    /// Returns the texture used for a hypothetical timed placed block.
+    /// Returns a reference to the texture used for a hypothetical timed placed block.
     pub fn timed_texture(&self, timer: i32) -> &T {
         &self.timed[(timer as usize).min(self.timed.len() - 1)]
+    }
+
+    /// Returns a mutable reference to the texture used for a hypothetical timed placed block.
+    pub fn timed_texture_mut(&mut self, timer: i32) -> &mut T {
+        &mut self.timed[(timer as usize).min(self.timed.len() - 1)]
     }
 
     /// Returns the texture used for an already-placed timed block.
@@ -79,6 +93,28 @@ impl<T> TileTextures<T> {
             }
             Tile::Shooter(direction) => self.shooters.get(*direction),
             Tile::Spike(direction) => self.spikes.get(*direction),
+        }
+    }
+
+    pub fn texture_from_tile_mut(&mut self, tile: &Tile) -> Option<&mut T> {
+        match tile {
+            Tile::Empty => None,
+            Tile::Block => Some(&mut self.block),
+            Tile::TopSlab => Some(&mut self.top_slab),
+            Tile::BottomSlab => Some(&mut self.bottom_slab),
+            Tile::Grass(i) => Some(&mut self.grass[*i]),
+            Tile::Dirt(i) => Some(&mut self.dirt[*i]),
+            Tile::PlacedBlock => Some(&mut self.placed_blocks.permanent),
+            Tile::PlacedTimedBlock(t) => {
+                let shown = t.floor() as usize;
+                if shown < self.placed_blocks.timed.len() {
+                    Some(&mut self.placed_blocks.timed[shown])
+                } else {
+                    None
+                }
+            }
+            Tile::Shooter(direction) => self.shooters.get_mut(*direction),
+            Tile::Spike(direction) => self.spikes.get_mut(*direction),
         }
     }
 }

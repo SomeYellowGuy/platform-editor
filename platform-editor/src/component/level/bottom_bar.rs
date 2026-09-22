@@ -4,6 +4,7 @@ use platform_editor_core::{
         Event,
         level::bottom_bar::{BottomBarBase, TimeState},
     },
+    screen::Screen,
 };
 use sdl3::render::{FPoint, FRect};
 
@@ -22,8 +23,12 @@ pub const TEXTURE_SIZE: (f32, f32) = (TEXTURE_SCALE * 694.0, TEXTURE_SCALE * 135
 
 impl Render for BottomBarBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
-        let t = data.transition_offset(0.9);
-        let offset = t * t;
+        let offset = if data.transitioned_from(Screen::Level) {
+            0.0
+        } else {
+            let t = data.transition_offset(0.9);
+            t * t / 2.0
+        };
         let text_y = TEXTURE_CENTER.y - 95.0 + offset;
 
         data.canvas.copy(
@@ -52,6 +57,7 @@ impl Render for BottomBarBase {
         // Draw the time icon and text.
         const TIME_ICON_SIZE: f32 = 50.0;
         const TIME_TEXT_X: f32 = 450.0;
+        data.textures.icons.time.set_alpha_mod(u8::MAX);
         data.canvas.copy(
             &data.textures.icons.time,
             None,

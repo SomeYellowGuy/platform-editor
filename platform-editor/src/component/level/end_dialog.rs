@@ -1,5 +1,5 @@
 use platform_editor_core::{
-    common_util::Vec2f,
+    common_util::{Vec2, Vec2f},
     component::{
         Hold,
         level::end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType, StarStatus},
@@ -169,11 +169,12 @@ pub const STAR_CIRCLE_CENTER: FPoint = FPoint {
     x: WIDTH as f32 / 2.0,
     y: 1130.0,
 };
-pub const ICON_SCALE: f32 = 0.85;
+pub const ICON_SCALE: f32 = 0.8;
 pub const MAX_ICON_SIZE: u32 = 100;
 pub const STAR_CIRCLE_RADIUS: f32 = 900.0;
-pub const STAR_CIRCLE_CONDITION_RADIUS: f32 = 770.0;
+pub const STAR_CIRCLE_CONDITION_RADIUS: f32 = 780.0;
 pub const MAX_STAR_CONDITION_NUMBER_WIDTH: f32 = 60.0;
+pub const STAR_CONDITION_NUMBER_GAP: f32 = 5.0;
 
 fn render_star(
     data: &mut RenderData,
@@ -233,7 +234,7 @@ fn render_star(
         .icons
         .get_mut(status.as_ref().map(|s| &s.condition));
     condition_texture.set_alpha_mod(alpha_mod);
-    let mut star_condition_pos = Vec2f::new(
+    let star_condition_pos = Vec2f::new(
         STAR_CIRCLE_CENTER.x + STAR_CIRCLE_CONDITION_RADIUS * sin,
         STAR_CIRCLE_CENTER.y - STAR_CIRCLE_CONDITION_RADIUS * cos,
     );
@@ -242,6 +243,9 @@ fn render_star(
         condition_texture.height().min(MAX_ICON_SIZE) as f32,
     ) * ICON_SCALE;
 
+    let accounted_icon_offset = Vec2f::new(icon_size.x / 2.0, 0.0);
+    let mut shift_offset = Vec2f::new(0.0, 0.0);
+
     if i > 0
         && let Some(number) = status.and_then(|s| s.condition.number_display())
     {
@@ -249,24 +253,30 @@ fn render_star(
         text.set_alpha_mod(alpha_mod);
         text.update(data.canvas, data.font, number.to_string())?;
 
-        let shift = 18.0;
-        let text_scale = (MAX_STAR_CONDITION_NUMBER_WIDTH / text.width()).min(1.0);
+        let taken_width = text.width().min(MAX_STAR_CONDITION_NUMBER_WIDTH);
+        let text_scale = (MAX_STAR_CONDITION_NUMBER_WIDTH / taken_width).min(1.0);
+        shift_offset.x = -(taken_width + STAR_CONDITION_NUMBER_GAP) / 2.0;
 
-        star_condition_pos += Vec2f::new(shift, 0.0);
         text.draw(
             data.canvas,
             TextAlignment::Left,
-            star_condition_pos.into_fpoint(),
+            (star_condition_pos
+                + accounted_icon_offset
+                + shift_offset
+                + Vec2::new(STAR_CONDITION_NUMBER_GAP, 0.0))
+            .into_fpoint(),
             text_scale,
         )?;
-
-        star_condition_pos -= Vec2f::new(2.0 * shift, 0.0);
     }
 
     data.canvas.copy(
         condition_texture,
         None,
-        FRect::from_center(star_condition_pos.into_fpoint(), icon_size.x, icon_size.y),
+        FRect::from_center(
+            (star_condition_pos + shift_offset).into_fpoint(),
+            icon_size.x,
+            icon_size.y,
+        ),
     )?;
 
     *angle += 10.0;
