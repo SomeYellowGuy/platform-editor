@@ -1,9 +1,9 @@
 use std::time::Instant;
 
 use crate::{
-    common_util::{Vec2, Vec2f},
+    common_util::{Direction, Vec2, Vec2f},
     component::level::end_dialog::StarStatus,
-    level::{Entity, FlagState, StarCondition, Tile, scratch::StoredScratchLevel},
+    level::{Entity, FlagState, ItemStack, StarCondition, Tile, scratch::StoredScratchLevel},
 };
 
 #[derive(Debug, Default, Clone)]
@@ -33,6 +33,10 @@ pub struct LevelState {
 
     /// The star conditions for all stars except the first star.
     pub star_conditions: Vec<StarCondition>,
+    /// The state of items that can be placed in a level.
+    pub items: Vec<ItemStack>,
+    /// The selected item stack index.
+    pub selected_item: Option<usize>,
 }
 
 impl LevelState {
@@ -58,11 +62,11 @@ impl LevelState {
         self.tile_state.tiles = tiles;
         self.player.pos = level.start_pos;
         self.player.velocity = Vec2f::new(0.0, 0.0);
-        self.player.reversed_gravity = false;
+        self.player.gravity_direction = Direction::Down;
         self.flag = level.flag;
 
         self.star_conditions = level.star_conditions.to_vec();
-
+        self.items = level.items.to_vec();
         self.finish_instant = None;
     }
 

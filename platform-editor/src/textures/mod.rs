@@ -117,11 +117,11 @@ pub struct LevelTextures<'c> {
     pub flags: [Texture<'c>; 9],
     pub hit_flag: Texture<'c>,
 
-    pub end_dialog: EndDialogTextures<'c>,
-
-    pub items_text: DynamicText<'c>,
+    pub item_box: Texture<'c>,
 
     pub bottom_bar: BottomBarTextures<'c>,
+    pub end_dialog: EndDialogTextures<'c>,
+    pub items_text: DynamicText<'c>,
 }
 
 impl<'c> LevelTextures<'c> {
@@ -134,9 +134,10 @@ impl<'c> LevelTextures<'c> {
             player: load_texture(creator, "assets/gfx/level/player.png")?,
             flags: flags.try_into().ok()?,
             hit_flag: load_texture(creator, "assets/gfx/level/flag/hit.png")?,
+            item_box: load_texture(creator, "assets/gfx/level/item_box.png")?,
+            bottom_bar: BottomBarTextures::load(creator)?,
             end_dialog: EndDialogTextures::load(creator)?,
             items_text: DynamicText::new(creator),
-            bottom_bar: BottomBarTextures::load(creator)?,
         })
     }
 
@@ -145,6 +146,7 @@ impl<'c> LevelTextures<'c> {
     ) -> Option<TileTextures<'c>> {
         Some(TileTextures {
             empty: load_tile_texture(creator, "empty.png")?,
+            void: load_tile_texture(creator, "void.png")?,
             spikes: DirectionalTextures::new(
                 Some(load_tile_texture(creator, "spike_up.png")?),
                 Some(load_tile_texture(creator, "spike_down.png")?),

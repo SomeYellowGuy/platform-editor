@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use crate::{
     component::{Event, QueuedComponent},
-    level::scratch::levels::LEVEL_COUNT,
+    level::{scratch::levels::LEVEL_COUNT, state::LevelState},
     options::Options,
 };
 
@@ -24,6 +24,8 @@ pub struct AppData<E: Default> {
 
     pub level_select_scroll: f32,
     pub level_select_scroll_velocity: f32,
+
+    pub level_state: Option<LevelState>,
 
     pub extra: E,
 

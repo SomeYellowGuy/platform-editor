@@ -75,6 +75,20 @@ impl<T> Vec2<T> {
     pub const fn new(x: T, y: T) -> Self {
         Self { x, y }
     }
+
+    pub fn get(self, bidirection: Bidirection) -> T {
+        match bidirection {
+            Bidirection::Horizontal => self.x,
+            Bidirection::Vertical => self.y,
+        }
+    }
+
+    pub fn get_mut(&mut self, bidirection: Bidirection) -> &mut T {
+        match bidirection {
+            Bidirection::Horizontal => &mut self.x,
+            Bidirection::Vertical => &mut self.y,
+        }
+    }
 }
 
 impl<T> From<(T, T)> for Vec2<T> {
@@ -237,4 +251,38 @@ pub enum Direction {
     Down,
     Left,
     Right,
+}
+
+impl Direction {
+    pub const fn unit_vec2f(self) -> Vec2f {
+        match self {
+            Self::Up => Vec2f::new(0.0, -1.0),
+            Self::Down => Vec2f::new(0.0, 1.0),
+            Self::Left => Vec2f::new(-1.0, 0.0),
+            Self::Right => Vec2f::new(1.0, 0.0),
+        }
+    }
+
+    pub const fn bidirection(self) -> Bidirection {
+        match self {
+            Self::Up | Self::Down => Bidirection::Vertical,
+            Self::Left | Self::Right => Bidirection::Horizontal,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Bidirection {
+    Horizontal,
+    Vertical,
+}
+
+impl Bidirection {
+    pub const fn other(self) -> Self {
+        match self {
+            Self::Horizontal => Self::Vertical,
+            Self::Vertical => Self::Horizontal,
+        }
+    }
 }

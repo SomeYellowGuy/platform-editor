@@ -2,20 +2,20 @@ use platform_editor_core::{
     common_util::{self, ScrollInfo},
     component::{
         BackButtonBase, BackButtonMode, ComponentId,
-        level::{board::BoardBase, bottom_bar::BottomBarBase, item_tab::ItemTabBase},
+        level::{BoardBase, ItemTabBase, bottom_bar::BottomBarBase},
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{
             TitleBase,
             button::{ButtonBase, ButtonType},
         },
     },
-    level::scratch::levels::LEVEL_COUNT,
+    level::{scratch::levels::LEVEL_COUNT, state::LevelState},
     screen::Screen,
 };
 use sdl3::mouse::MouseButton;
 
 use crate::{
-    ComponentMap, NO_LOGIC_PRIORITY, WIDTH,
+    AppData, ComponentMap, NO_LOGIC_PRIORITY, WIDTH,
     component::{
         Component,
         level_select::button::{LEVELS_PER_ROW, SPACING},
@@ -29,7 +29,7 @@ pub const STARTING_LEVEL_SELECT_SCROLL: f32 = 60.0;
 /// Called when a screen is entered into.
 ///
 /// `logic_data` is `Some` if this is because of a transition.
-pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut LogicData>) {
+pub fn on_enter(screen: Screen, map: &mut ComponentMap, app_data: &mut AppData) {
     match screen {
         Screen::Title => {
             // Add the title and buttons.
@@ -50,9 +50,7 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
             }
         }
         Screen::LevelSelect => {
-            if let Some(logic_data) = logic_data {
-                logic_data.app_data.level_select_scroll_velocity = 0.0;
-            }
+            app_data.level_select_scroll_velocity = 0.0;
 
             for level in 0..LEVEL_COUNT {
                 map.insert(
@@ -81,22 +79,19 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, logic_data: Option<&mut 
             );
         }
         Screen::Level => {
-            let mut base = BoardBase::new();
-            let level = logic_data.map_or(0, |l| l.app_data.level.playing_level);
-            base.state.load_scratch_level(level);
-            map.insert(ComponentId::Board, Component::Board(base), 10, 0);
-            map.insert(
-                ComponentId::ItemTab,
-                Component::ItemTab(ItemTabBase {}),
-                15,
-                5,
-            );
+            let level = app_data.level.playing_level;
+            let mut level_state = LevelState::new();
+            level_state.load_scratch_level(level);
+            map.insert(ComponentId::Board, Component::Board(BoardBase), 10, 0);
+            map.insert(ComponentId::ItemTab, Component::ItemTab(ItemTabBase), 15, 5);
             map.insert(
                 ComponentId::BottomBar,
                 Component::BottomBar(BottomBarBase::new()),
                 11,
                 10,
             );
+
+            app_data.level_state = Some(level_state);
         }
         Screen::Options => {}
     }

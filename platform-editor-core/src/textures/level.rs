@@ -27,6 +27,18 @@ pub struct PlacedBlockTextures<T> {
     pub timed: [T; 5],
 }
 
+impl<T> PlacedBlockTextures<T> {
+    /// Returns the texture used for a hypothetical timed placed block.
+    pub fn timed_texture(&self, timer: i32) -> &T {
+        &self.timed[(timer as usize).min(self.timed.len() - 1)]
+    }
+
+    /// Returns the texture used for an already-placed timed block.
+    pub fn runtime_timed_texture(&self, timer: f32) -> &T {
+        &self.timed[(timer.ceil() as usize).min(self.timed.len() - 1)]
+    }
+}
+
 pub struct MovingPlacedBlockTextures<T> {
     pub single: DirectionalTextures<T>,
     pub vertical: T,
@@ -35,6 +47,7 @@ pub struct MovingPlacedBlockTextures<T> {
 
 pub struct TileTextures<T> {
     pub empty: T,
+    pub void: T,
 
     pub spikes: DirectionalTextures<T>,
     pub shooters: DirectionalTextures<T>,

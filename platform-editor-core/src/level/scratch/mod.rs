@@ -1,6 +1,6 @@
 use crate::{
     common_util::{Direction, Vec2f, digit_count},
-    level::{FlagState, LockColor, StarCondition, Tile},
+    level::{FlagState, ItemStack, LockColor, StarCondition, Tile},
 };
 
 pub mod levels;
@@ -139,6 +139,8 @@ pub struct StoredScratchLevel {
     pub flag: FlagState,
     /// The other star goals.
     pub star_conditions: [StarCondition; 2],
+    /// The item stacks of the level.
+    pub items: &'static [ItemStack],
 }
 
 impl StoredScratchLevel {
@@ -153,6 +155,7 @@ impl StoredScratchLevel {
             start_pos: Vec2f::new(0.0, 0.0),
             flag: FlagState::new(Vec2f::new(0.0, 0.0)),
             star_conditions: [StarCondition::Time(10), StarCondition::Time(10)],
+            items: &[],
         }
     }
 
@@ -178,6 +181,11 @@ impl StoredScratchLevel {
 
     pub const fn stars(mut self, star_2: StarCondition, star_3: StarCondition) -> Self {
         self.star_conditions = [star_2, star_3];
+        self
+    }
+
+    pub const fn items(mut self, items: &'static [ItemStack]) -> Self {
+        self.items = items;
         self
     }
 }

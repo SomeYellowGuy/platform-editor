@@ -1,6 +1,7 @@
 use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
     level::state::TileState,
+    textures::level::TileTextures,
 };
 
 pub mod scratch;
@@ -105,13 +106,78 @@ impl StarCondition {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+/// A structure that describes a type of moving block.
+#[derive(Debug, Clone)]
+pub enum MovingBlockItem {
+    Single(Direction),
+    Horizontal,
+    Vertical,
+}
+
+impl MovingBlockItem {
+    pub fn icon_texture<'a, T>(&self, textures: &'a TileTextures<T>) -> Option<&'a T> {
+        match self {
+            Self::Single(d) => textures.placed_blocks.moving.single.get(*d),
+            Self::Horizontal => Some(&textures.placed_blocks.moving.horizontal),
+            Self::Vertical => Some(&textures.placed_blocks.moving.vertical),
+        }
+    }
+}
+
+/// A type of something that can be placed by a player.
+#[derive(Debug, Clone)]
+pub enum Item {
+    Block,
+    TimedBlock(i32),
+    Moving(MovingBlockItem),
+    GravityOrb,
+    Star,
+}
+
+impl Item {
+    pub fn icon_texture<'a, T>(&self, textures: &'a TileTextures<T>) -> Option<&'a T> {
+        match self {
+            Self::Block => Some(&textures.placed_blocks.permanent),
+            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture(*t)),
+            Self::Moving(moving_block_item) => moving_block_item.icon_texture(textures),
+            // TODO
+            Self::GravityOrb => None,
+            Self::Star => None,
+        }
+    }
+}
+
+/// Represents a type of item (which can be placed) and its remaining count.
+#[derive(Debug, Clone)]
+pub struct ItemStack {
+    pub item: Item,
+    pub count: u32,
+}
+
+impl ItemStack {
+    pub const fn new(item: Item, count: u32) -> Self {
+        Self { item, count }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Entity {
     pub pos: Vec2f,
     pub velocity: Vec2f,
-    pub reversed_gravity: bool,
+    pub gravity_direction: Direction,
 
     is_falling: bool,
+}
+
+impl Default for Entity {
+    fn default() -> Self {
+        Self {
+            pos: Default::default(),
+            velocity: Default::default(),
+            gravity_direction: Direction::Down,
+            is_falling: Default::default(),
+        }
+    }
 }
 
 impl Entity {
@@ -119,12 +185,19 @@ impl Entity {
         Rectf::from_center(self.pos, Vec2::new(ENTITY_SIZE, ENTITY_SIZE))
     }
 
+    pub fn gravity(&self) -> Vec2f {
+        self.gravity_direction.unit_vec2f() * GRAVITY
+    }
+
     pub fn tick(&mut self, tiles: &TileState, delta: f32) {
         // Apply gravity.
-        self.velocity -= Vec2f::new(0.0, -GRAVITY) * delta * self.gravity_multiplier();
+        self.velocity += self.gravity() * delta;
 
         // Apply friction.
-        self.velocity.x *= 0.85_f32.powf(delta * 30.0);
+        let non_gravity_component = self
+            .velocity
+            .get_mut(self.gravity_direction.bidirection().other());
+        *non_gravity_component *= 0.85_f32.powf(delta * 30.0);
 
         // Move the entity.
         self.move_in_steps(tiles);
@@ -135,7 +208,9 @@ impl Entity {
         self.velocity.x += horizontal as f32 * delta * MOVE_VELOCITY;
 
         if !self.is_falling && jump {
-            self.velocity.y = -JUMP_VELOCITY * self.gravity_multiplier();
+            let new_velocity = -JUMP_VELOCITY * self.gravity_multiplier();
+            let gravity_component = self.velocity.get_mut(self.gravity_direction.bidirection());
+            *gravity_component = new_velocity;
         }
     }
 
@@ -167,7 +242,10 @@ impl Entity {
     }
 
     fn gravity_multiplier(&self) -> f32 {
-        if self.reversed_gravity { -1.0 } else { 1.0 }
+        match self.gravity_direction {
+            Direction::Up | Direction::Left => -1.0,
+            Direction::Down | Direction::Right => 1.0,
+        }
     }
 
     pub fn is_colliding_with_tiles(&self, tiles: &TileState) -> bool {

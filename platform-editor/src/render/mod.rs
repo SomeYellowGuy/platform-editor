@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use platform_editor_core::screen::SharedTransitionData;
+use platform_editor_core::{level::state::LevelState, screen::SharedTransitionData};
 use sdl3::{
     Error,
     rect::{Point, Rect},
@@ -9,7 +9,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{App, AppData, ExtractedData, textures::Textures};
+use crate::{ExtractedData, textures::Textures};
 
 pub type DrawResult<T = ()> = Result<T, Error>;
 
@@ -21,26 +21,38 @@ pub struct RenderData<'window, 'i, 'c> {
     pub start: Instant,
     /// The current transition's data, if any.
     pub transition: Option<SharedTransitionData>,
-    pub extracted_data: &'i ExtractedData,
+    pub extracted_data: &'i ExtractedData<'i>,
 }
 
 impl<'window, 'i, 'c> RenderData<'window, 'i, 'c> {
     /// Creates some new `RenderData` with the provided app and images.
     pub fn new(
-        app: &'window mut App,
-        data: &'window AppData,
+        canvas: &'window mut Canvas<Window>,
+        start: Instant,
         textures: &'i mut Textures<'c>,
         font: &'static Font,
         transition: Option<SharedTransitionData>,
-        extracted: &'i ExtractedData,
+        extracted: &'i ExtractedData<'i>,
     ) -> Self {
         Self {
-            canvas: &mut app.canvas,
+            canvas,
             textures,
-            start: data.start,
+            start,
             font,
             transition,
             extracted_data: extracted,
+        }
+    }
+
+    /// Attempts to get the [`LevelState`] from some extracted data, returning an error otherwise.
+    pub fn level_state<'a>(data: &'a ExtractedData<'_>) -> DrawResult<&'a LevelState> {
+        if let Some(state) = data.level_state {
+            Ok(state)
+        } else {
+            unsafe {
+                sdl3_sys::error::SDL_SetError(c"Could not get level state".as_ptr());
+            }
+            Err(sdl3::get_error())
         }
     }
 

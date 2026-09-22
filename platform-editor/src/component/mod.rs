@@ -2,10 +2,9 @@ use platform_editor_core::{
     component::{
         BackButtonBase, BackButtonMode, Event, Hold,
         level::{
-            board::BoardBase,
+            BoardBase, ItemTabBase,
             bottom_bar::BottomBarBase,
             end_dialog::{EndDialogBase, EndDialogButtonBase},
-            item_tab::ItemTabBase,
         },
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{TitleBase, button::ButtonBase},

@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use platform_editor_core::LevelSave;
 use platform_editor_core::component::ComponentMapQueryType;
+use platform_editor_core::level::state::LevelState;
 use platform_editor_core::options::Options;
 use platform_editor_core::screen::{Screen, ScreenManager, SharedTransitionData, TransitionCall};
 use sdl3::EventPump;
@@ -122,9 +123,10 @@ impl Default for ExtraAppData {
     }
 }
 
-pub struct ExtractedData {
+pub struct ExtractedData<'i> {
     pub y_scroll: f32,
     pub playing_level: usize,
+    pub level_state: Option<&'i LevelState>,
 }
 
 impl App {
@@ -155,6 +157,7 @@ impl App {
             level_select_scroll: screen::STARTING_LEVEL_SELECT_SCROLL,
             level_select_scroll_velocity: 0.0,
             level: LevelSave::new(),
+            level_state: None,
         };
 
         let mut components = ComponentMap::new();
@@ -165,7 +168,7 @@ impl App {
         let mut last_instant = Instant::now();
 
         let mut screen_manager = ScreenManager::new();
-        screen::on_enter(screen_manager.screen, &mut components, None);
+        screen::on_enter(screen_manager.screen, &mut components, &mut data);
 
         'running: loop {
             let start: Instant = Instant::now();
@@ -286,26 +289,29 @@ impl App {
 
         if let Some((old_screen, new_screen)) = transition_manager.tick(call) {
             screen::on_exit(old_screen, components);
-            screen::on_enter(new_screen, components, Some(&mut logic_data))
+            screen::on_enter(new_screen, components, app_data)
         }
 
         // Rendering
 
+        let start = app_data.start;
+
         let extracted = ExtractedData {
             y_scroll: app_data.level_select_scroll,
             playing_level: app_data.level.playing_level,
+            level_state: app_data.level_state.as_ref(),
         };
 
-        if let Some(e) = self
-            .render(
-                app_data,
-                images,
-                font,
-                components,
-                transition_manager.transition_data(),
-                &extracted,
-            )
-            .err()
+        if let Some(e) = Self::render(
+            start,
+            &mut self.canvas,
+            images,
+            font,
+            components,
+            transition_manager.transition_data(),
+            &extracted,
+        )
+        .err()
         {
             println!("Error occured during rendering: {e}");
         }
@@ -348,21 +354,21 @@ impl App {
     }
 
     fn render(
-        &mut self,
-        data: &AppData,
+        start: Instant,
+        canvas: &mut Canvas<Window>,
         images: &mut Textures,
         font: &'static Font,
         components: &mut ComponentMap,
         transition: Option<SharedTransitionData>,
         extracted: &ExtractedData,
     ) -> DrawResult {
-        self.canvas.set_draw_color(Color::RGB(10, 10, 10));
-        self.canvas.clear();
+        canvas.set_draw_color(Color::RGB(10, 10, 10));
+        canvas.clear();
 
-        self.canvas.set_draw_color(Color::RGB(60, 60, 60));
-        self.canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
+        canvas.set_draw_color(Color::RGB(60, 60, 60));
+        canvas.fill_rect(Rect::new(0, 0, WIDTH, HEIGHT))?;
 
-        let mut data = RenderData::new(self, data, images, font, transition, extracted);
+        let mut data = RenderData::new(canvas, start, images, font, transition, extracted);
 
         data.canvas.set_blend_mode(BlendMode::None);
         Background.render(&mut data)?;
