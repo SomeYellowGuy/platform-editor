@@ -267,8 +267,10 @@ impl Rectf {
 
     /// Returns whether this `Rectf` completely contains the given `Rectf`.
     pub fn contains_rect(self, other: Self) -> bool {
-        (self.pos.x..=(self.pos.x + self.dimensions.x)).contains(&other.pos.x)
-            && (self.pos.x..=(self.pos.x + self.dimensions.x)).contains(&other.pos.x)
+        self.pos.x <= other.pos.x
+            && self.pos.y <= other.pos.y
+            && self.pos.x + self.dimensions.x >= other.pos.x + other.dimensions.x
+            && self.pos.y + self.dimensions.y >= other.pos.y + other.dimensions.y
     }
 
     /// Returns whether this `Rectf` touches the line `x = <x>`.

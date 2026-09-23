@@ -159,6 +159,7 @@ impl App {
             level_select_scroll: screen::STARTING_LEVEL_SELECT_SCROLL,
             level_select_scroll_velocity: 0.0,
             level: LevelSave::new(),
+            previous_selected_item: None,
             level_state: None,
         };
 

@@ -57,11 +57,13 @@ impl Entity {
             .get_mut(self.gravity_direction.bidirection().other());
         *non_gravity_component *= 0.85_f32.powf(delta * 30.0);
 
+        // Check if the entity is too close to the void.
+        let alive = !self.is_touching_void(tiles);
+
         // Move the entity.
         self.move_in_steps(tiles);
 
-        // Check if the entity is too close to the void.
-        !self.is_touching_void(tiles)
+        alive
     }
 
     pub fn apply_controls(&mut self, left: bool, right: bool, jump: bool, delta: f32) {
@@ -103,8 +105,7 @@ impl Entity {
     }
 
     pub fn is_touching_void(&self, tiles: &TileState) -> bool {
-        self.hitbox()
-            .touches_y_line(tiles.size.y as f32 - f32::EPSILON)
+        self.hitbox().touches_y_line(tiles.size.y as f32 - 0.1)
     }
 
     fn gravity_multiplier(&self) -> f32 {
@@ -117,12 +118,7 @@ impl Entity {
     pub fn is_colliding_with_tiles(&self, tiles: &TileState) -> bool {
         let hitbox = self.hitbox();
 
-        if !Rectf::new(
-            Vec2f::new(0.0, 0.0),
-            Vec2f::new(tiles.size.x as f32, tiles.size.y as f32),
-        )
-        .contains_rect(hitbox)
-        {
+        if !Rectf::new(Vec2f::new(0.0, 0.0), tiles.size.map(|u| u as f32)).contains_rect(hitbox) {
             return true;
         }
 

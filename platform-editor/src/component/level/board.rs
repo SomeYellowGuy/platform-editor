@@ -9,7 +9,7 @@ use platform_editor_core::{
         },
     },
     level::state::{LevelState, LevelStateOutcome, entity::ENTITY_SIZE},
-    screen::{Screen, TransitionCall, TransitionData},
+    screen::Screen,
 };
 use sdl3::{
     keyboard::Scancode,
@@ -218,13 +218,24 @@ impl Render for BoardBase {
 impl Logic for BoardBase {
     fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
         let delta = data.delta_time as f32 / 1_000_000_000.0;
+        let finished = data
+            .app_data
+            .level_state
+            .as_ref()
+            .is_some_and(LevelState::is_finished);
 
-        let mouse_up = data.is_mouse_button_up(MouseButton::Left);
         let mouse_pos = data.mouse_pos();
 
-        let left = data.is_held(Scancode::Left);
-        let right = data.is_held(Scancode::Right);
-        let jump = data.is_held(Scancode::Up);
+        let (mouse_up, left, right, jump) = if finished {
+            (false, false, false, false)
+        } else {
+            (
+                data.is_mouse_button_up(MouseButton::Left),
+                data.is_held(Scancode::Left),
+                data.is_held(Scancode::Right),
+                data.is_held(Scancode::Up),
+            )
+        };
 
         let outcome = {
             let Some(state) = &mut data.app_data.level_state else {
@@ -239,6 +250,10 @@ impl Logic for BoardBase {
 
             state.tick(delta)
         };
+
+        if finished {
+            return;
+        }
 
         match outcome {
             LevelStateOutcome::Win => {
@@ -274,11 +289,7 @@ impl Logic for BoardBase {
             }
             LevelStateOutcome::Lose => {
                 // Reset the level by calling a transition.
-                data.set_transition_call(TransitionCall::Start(TransitionData::new(
-                    0,
-                    300_000_000,
-                    Screen::Level,
-                )));
+                data.reset_level_call();
             }
             LevelStateOutcome::None => {
                 let state = data.app_data.level_state.as_mut().unwrap();

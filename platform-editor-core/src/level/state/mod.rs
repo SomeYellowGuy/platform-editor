@@ -68,7 +68,7 @@ impl LevelState {
         LevelState::default()
     }
 
-    pub fn load_scratch_level(&mut self, index: usize) {
+    pub fn load_scratch_level(&mut self, index: usize, initial_selected_item: Option<usize>) {
         let level = &crate::level::scratch::levels::LEVELS[index];
         let mut tiles = Vec::new();
         self.tile_state.size = Vec2::new(StoredScratchLevel::WIDTH, StoredScratchLevel::HEIGHT);
@@ -91,6 +91,8 @@ impl LevelState {
         self.star_conditions = level.star_conditions.to_vec();
         self.items = level.items.to_vec();
         self.finish_instant = None;
+
+        self.selected_item = initial_selected_item;
     }
 
     pub fn is_finished(&self) -> bool {

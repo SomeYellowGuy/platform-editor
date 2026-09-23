@@ -41,10 +41,24 @@ impl LogicData<'_> {
 
     /// A type of transition specifically to reset a level.
     pub fn reset_level_call(&mut self) {
+        self.app_data.previous_selected_item = self
+            .app_data
+            .level_state
+            .as_ref()
+            .and_then(|s| s.selected_item);
         self.set_transition_call(TransitionCall::Start(TransitionData::new(
             0,
-            300_000_000,
+            200_000_000,
             Screen::Level,
+        )));
+    }
+
+    /// A type of transition specifically to go back to the level select.
+    pub fn level_select_call(&mut self) {
+        self.set_transition_call(TransitionCall::Start(TransitionData::new(
+            600_000_000,
+            800_000_000,
+            Screen::LevelSelect,
         )));
     }
 

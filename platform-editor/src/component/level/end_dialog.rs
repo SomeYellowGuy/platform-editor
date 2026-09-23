@@ -4,7 +4,6 @@ use platform_editor_core::{
         Hold,
         level::end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType, StarStatus},
     },
-    screen::{Screen, TransitionCall, TransitionData},
 };
 use sdl3::{
     mouse::MouseButton,
@@ -347,16 +346,11 @@ impl Logic for EndDialogButtonBase {
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             match self.ty {
-                EndDialogButtonType::LevelSelect => data.reset_level_call(),
-                _ => {
-                    if self.ty == EndDialogButtonType::Next {
-                        data.app_data.level.playing_level += 1;
-                    }
-                    data.set_transition_call(TransitionCall::Start(TransitionData::new(
-                        0,
-                        0,
-                        Screen::Level,
-                    )))
+                EndDialogButtonType::LevelSelect => data.level_select_call(),
+                EndDialogButtonType::Retry => data.reset_level_call(),
+                EndDialogButtonType::Next => {
+                    data.app_data.level.playing_level += 1;
+                    data.reset_level_call()
                 }
             }
         }

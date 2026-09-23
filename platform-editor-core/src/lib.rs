@@ -25,6 +25,7 @@ pub struct AppData<E: Default> {
     pub level_select_scroll: f32,
     pub level_select_scroll_velocity: f32,
 
+    pub previous_selected_item: Option<usize>,
     pub level_state: Option<LevelState>,
 
     pub extra: E,

@@ -84,7 +84,7 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, app_data: &mut AppData) 
         Screen::Level => {
             let level = app_data.level.playing_level;
             let mut level_state = LevelState::new();
-            level_state.load_scratch_level(level);
+            level_state.load_scratch_level(level, app_data.previous_selected_item);
             map.insert(ComponentId::Board, Component::Board(BoardBase), 10, 0);
             map.insert(ComponentId::ItemTab, Component::ItemTab(ItemTabBase), 15, 5);
             map.insert(

@@ -4,7 +4,8 @@ use platform_editor_core::{
         Event, Hold,
         level::bottom_bar::{BottomBarBase, BottomBarButtonBase, BottomBarButtonType, TimeState},
     },
-    screen::{Screen, TransitionCall, TransitionData},
+    level::state::LevelState,
+    screen::Screen,
 };
 use sdl3::{
     mouse::MouseButton,
@@ -124,7 +125,7 @@ impl Logic for BottomBarBase {
 impl Render for BottomBarButtonBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
         let offset = render_offset(data);
-        let alpha_offset = data.transition_offset(1.0 / 10.0).max(0.0);
+        let alpha_offset = offset * 0.02;
 
         let texture = match self.ty {
             BottomBarButtonType::Reset => &mut data.textures.level.bottom_bar.reset,
@@ -150,23 +151,26 @@ impl Render for BottomBarButtonBase {
 
 impl Logic for BottomBarButtonBase {
     fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
-        let hovered = button_pos(self.ty).distance_sqr(data.mouse_pos())
-            < BUTTON_BASE_SIZE * BUTTON_BASE_SIZE;
-        if data.is_mouse_button_up(MouseButton::Left) && hovered {
-            match self.ty {
-                BottomBarButtonType::Reset => {
-                    data.reset_level_call();
+        if data
+            .app_data
+            .level_state
+            .as_ref()
+            .is_some_and(LevelState::is_finished)
+        {
+            // We don't want to do anything if the level is already done.
+            self.update_hold_time(data.delta_time, false);
+        } else {
+            let hovered = button_pos(self.ty).distance_sqr(data.mouse_pos())
+                < (BUTTON_BASE_SIZE * BUTTON_BASE_SIZE) / 4.0;
+            self.update_hold_time(data.delta_time, hovered);
+
+            if data.is_mouse_button_up(MouseButton::Left) && hovered {
+                match self.ty {
+                    BottomBarButtonType::Reset => data.reset_level_call(),
+                    BottomBarButtonType::LevelSelect => data.level_select_call(),
+                    BottomBarButtonType::Options => {}
                 }
-                BottomBarButtonType::LevelSelect => {
-                    data.set_transition_call(TransitionCall::Start(TransitionData::new(
-                        600_000_000,
-                        800_000_000,
-                        Screen::LevelSelect,
-                    )))
-                }
-                BottomBarButtonType::Options => {}
             }
         }
-        self.update_hold_time(data.delta_time, hovered);
     }
 }
