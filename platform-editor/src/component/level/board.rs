@@ -8,7 +8,7 @@ use platform_editor_core::{
             end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType},
         },
     },
-    level::state::{LevelState, LevelStateOutcome, entity::ENTITY_SIZE},
+    level::state::{CollectibleState, LevelState, LevelStateOutcome, entity::Entity},
     screen::Screen,
 };
 use sdl3::{
@@ -28,6 +28,7 @@ use crate::{
 };
 
 pub const TILE_SIZE: f32 = 60.0;
+pub const COLLECTIBLE_SIZE: f32 = 50.0;
 pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 28.0);
 
 pub const ITEM_PREVIEW_ALPHA: u8 = (u8::MAX as f32 * 0.6) as u8;
@@ -77,6 +78,18 @@ fn copy(
 ) -> DrawResult {
     texture.set_alpha_mod(alpha);
     canvas.copy(texture, src, dst)
+}
+
+fn copy_with_rotation(
+    canvas: &mut Canvas<Window>,
+    alpha: u8,
+    texture: &mut Texture,
+    src: Option<FRect>,
+    dst: FRect,
+    angle: f64,
+) -> DrawResult {
+    texture.set_alpha_mod(alpha);
+    canvas.copy_ex(texture, src, dst, angle, None, false, false)
 }
 
 fn multiply_alphas(a1: u8, a2: u8) -> u8 {
@@ -152,8 +165,8 @@ impl Render for BoardBase {
             None,
             FRect::from_center(
                 player_center,
-                ENTITY_SIZE * TILE_SIZE,
-                ENTITY_SIZE * TILE_SIZE,
+                Entity::SIZE * TILE_SIZE,
+                Entity::SIZE * TILE_SIZE,
             ),
         )?;
 
@@ -209,6 +222,43 @@ impl Render for BoardBase {
                 None,
                 rect,
             )?;
+        }
+
+        // Draw the collectibles.
+        let angle = data.oscillation_angle(2.0);
+        let angle_sine = angle.sin();
+        let vertical_offset = 4.0 * (2.0 * angle).cos() as f32;
+        for collectible in &state.collectibles {
+            let (collectible_alpha, size_multiplier) =
+                if let Some(time) = collectible.collect_time.map(|i| i.elapsed().as_secs_f32()) {
+                    (
+                        ((1.0 - time / CollectibleState::FADE_TIME) * (u8::MAX as f32)) as u8,
+                        1.0 + time,
+                    )
+                } else {
+                    (u8::MAX, 1.0)
+                };
+
+            if let Some(texture) = data
+                .textures
+                .level
+                .collectibles
+                .texture_from_collectible_mut(collectible.ty)
+            {
+                let center = pos_to_screen(state, collectible.pos, offset);
+                copy_with_rotation(
+                    data.canvas,
+                    multiply_alphas(alpha, collectible_alpha),
+                    texture,
+                    None,
+                    FRect::from_center(
+                        (center + Vec2f::new(0.0, vertical_offset)).into_fpoint(),
+                        COLLECTIBLE_SIZE * size_multiplier,
+                        COLLECTIBLE_SIZE * size_multiplier,
+                    ),
+                    10.0 * angle_sine,
+                )?;
+            }
         }
 
         Ok(())

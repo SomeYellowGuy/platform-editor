@@ -108,6 +108,8 @@ pub type PlacedBlockTextures<'c> =
     platform_editor_core::textures::level::PlacedBlockTextures<Texture<'c>>;
 pub type MovingPlacedBlockTextures<'c> =
     platform_editor_core::textures::level::MovingPlacedBlockTextures<Texture<'c>>;
+pub type CollectibleTextures<'c> =
+    platform_editor_core::textures::level::CollectibleTextures<Texture<'c>>;
 pub type IconTextures<'c> = platform_editor_core::textures::IconTextures<Texture<'c>>;
 
 pub struct LevelTextures<'c> {
@@ -116,6 +118,7 @@ pub struct LevelTextures<'c> {
     pub player: Texture<'c>,
     pub flags: [Texture<'c>; 9],
     pub hit_flag: Texture<'c>,
+    pub collectibles: CollectibleTextures<'c>,
 
     pub item_box: Texture<'c>,
 
@@ -134,6 +137,13 @@ impl<'c> LevelTextures<'c> {
             player: load_texture(creator, "assets/gfx/level/player.png")?,
             flags: flags.try_into().ok()?,
             hit_flag: load_texture(creator, "assets/gfx/level/flag/hit.png")?,
+            collectibles: CollectibleTextures {
+                star: load_texture(creator, "assets/gfx/level/collectibles/star.png")?,
+                gravity_orb: load_texture(
+                    creator,
+                    "assets/gfx/level/collectibles/gravity_orb.png",
+                )?,
+            },
             item_box: load_texture(creator, "assets/gfx/level/item_box.png")?,
             bottom_bar: BottomBarTextures::load(creator)?,
             end_dialog: EndDialogTextures::load(creator)?,

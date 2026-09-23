@@ -1,6 +1,6 @@
 use crate::{
     common_util::{Direction, Vec2f, digit_count},
-    level::{FlagState, ItemStack, LockColor, StarCondition, Tile},
+    level::{Collectible, CollectibleType, FlagState, ItemStack, LockColor, StarCondition, Tile},
 };
 
 pub mod levels;
@@ -132,13 +132,13 @@ impl StoredScratchTile {
 #[derive(Debug, Clone)]
 pub struct StoredScratchLevel {
     pub tiles: [StoredScratchTile; StoredScratchLevel::WIDTH * StoredScratchLevel::HEIGHT],
-    pub collectibles: &'static [StoredScratchCollectible],
+    pub collectibles: &'static [ScratchCollectible],
     /// The player's start position.
     pub start_pos: Vec2f,
     /// The flag's state.
     pub flag: FlagState,
     /// The other star goals.
-    pub star_conditions: [StarCondition; 2],
+    pub star_conditions: [ScratchStarCondition; 2],
     /// The item stacks of the level.
     pub items: &'static [ItemStack],
 }
@@ -148,56 +148,144 @@ impl StoredScratchLevel {
     pub const HEIGHT: usize = 8;
     pub const TILE_COUNT: usize = Self::WIDTH * Self::HEIGHT;
 
-    pub const fn new(tiles: &[u8; 104]) -> Self {
-        Self {
+    pub const fn builder(tiles: &[u8; 104]) -> StoredScratchLevelBuilder {
+        StoredScratchLevelBuilder(Self {
             tiles: StoredScratchTile::tiles_from_bytes(tiles),
             collectibles: &[],
             start_pos: Vec2f::new(0.0, 0.0),
             flag: FlagState::new(Vec2f::new(0.0, 0.0)),
-            star_conditions: [StarCondition::Time(10), StarCondition::Time(10)],
+            star_conditions: [
+                ScratchStarCondition::Time(10),
+                ScratchStarCondition::Time(10),
+            ],
             items: &[],
-        }
+        })
     }
+}
 
+pub struct StoredScratchLevelBuilder(StoredScratchLevel);
+
+impl StoredScratchLevelBuilder {
     pub const fn start_pos(mut self, pos: Vec2f) -> Self {
-        self.start_pos = pos;
+        self.0.start_pos = pos;
         self
     }
 
     pub const fn flag_pos(mut self, pos: Vec2f) -> Self {
-        self.flag = FlagState::new(pos);
+        self.0.flag = FlagState::new(pos);
         self
     }
 
     pub const fn flag(mut self, flag: FlagState) -> Self {
-        self.flag = flag;
+        self.0.flag = flag;
         self
     }
 
-    pub const fn collectibles(mut self, collectibles: &'static [StoredScratchCollectible]) -> Self {
-        self.collectibles = collectibles;
+    pub const fn collectibles(mut self, collectibles: &'static [ScratchCollectible]) -> Self {
+        self.0.collectibles = collectibles;
         self
     }
 
-    pub const fn stars(mut self, star_2: StarCondition, star_3: StarCondition) -> Self {
-        self.star_conditions = [star_2, star_3];
+    pub const fn stars(
+        mut self,
+        star_2: ScratchStarCondition,
+        star_3: ScratchStarCondition,
+    ) -> Self {
+        self.0.star_conditions = [star_2, star_3];
         self
     }
 
     pub const fn items(mut self, items: &'static [ItemStack]) -> Self {
-        self.items = items;
+        self.0.items = items;
         self
+    }
+
+    pub const fn build(self) -> StoredScratchLevel {
+        self.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScratchLockColor {
+    Red,
+    Orange,
+    Yellow,
+    Green,
+    Blue,
+}
+
+impl From<ScratchLockColor> for LockColor {
+    fn from(value: ScratchLockColor) -> Self {
+        match value {
+            ScratchLockColor::Red => Self::Red,
+            ScratchLockColor::Orange => Self::Orange,
+            ScratchLockColor::Yellow => Self::Yellow,
+            ScratchLockColor::Green => Self::Green,
+            ScratchLockColor::Blue => Self::Blue,
+        }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct StoredScratchCollectible {
-    pub pos: Vec2f,
-    pub kind: ScratchCollectible,
+pub enum ScratchCollectibleType {
+    Star,
+    Key(ScratchLockColor),
+    Orb,
+}
+
+impl From<ScratchCollectibleType> for CollectibleType {
+    fn from(value: ScratchCollectibleType) -> Self {
+        match value {
+            ScratchCollectibleType::Star => Self::Star(0),
+            ScratchCollectibleType::Key(key) => Self::Key(key.into()),
+            ScratchCollectibleType::Orb => Self::GravityOrb,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ScratchCollectible {
-    Orb,
-    Key(i8),
+pub struct ScratchCollectible {
+    pub pos: Vec2f,
+    pub ty: ScratchCollectibleType,
+}
+
+impl ScratchCollectible {
+    pub const fn new(pos: Vec2f, ty: ScratchCollectibleType) -> Self {
+        Self { pos, ty }
+    }
+
+    pub const fn key(pos: Vec2f, color: ScratchLockColor) -> Self {
+        Self::new(pos, ScratchCollectibleType::Key(color))
+    }
+}
+
+impl From<ScratchCollectible> for Collectible {
+    fn from(value: ScratchCollectible) -> Self {
+        Self::new(value.pos, value.ty.into())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ScratchStarCondition {
+    Collect,
+    Time(u32),
+    Items(u32),
+    Enemies(u32),
+    EnemiesLeft(u32),
+    NormalGravity,
+    InvertedGravity,
+}
+
+impl From<ScratchStarCondition> for StarCondition {
+    fn from(value: ScratchStarCondition) -> Self {
+        match value {
+            ScratchStarCondition::Collect => Self::Collect(0),
+            ScratchStarCondition::Time(t) => Self::Time(t),
+            ScratchStarCondition::Items(i) => Self::Items(i),
+            ScratchStarCondition::Enemies(e) => Self::Enemies(e),
+            ScratchStarCondition::EnemiesLeft(e) => Self::EnemiesLeft(e),
+            ScratchStarCondition::NormalGravity => Self::Gravity(Direction::Down),
+            ScratchStarCondition::InvertedGravity => Self::Gravity(Direction::Up),
+        }
+    }
 }

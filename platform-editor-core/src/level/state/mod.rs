@@ -6,8 +6,8 @@ use crate::{
     common_util::{Direction, Vec2, Vec2f, Vec2i},
     component::level::end_dialog::StarStatus,
     level::{
-        FlagState, ItemPlaceOutcome, ItemStack, StarCondition, Tile, scratch::StoredScratchLevel,
-        state::entity::Entity,
+        Collectible, CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, StarCondition, Tile,
+        scratch::StoredScratchLevel, state::entity::Entity,
     },
 };
 
@@ -35,6 +35,58 @@ impl TileState {
         tile.y = tile.y.clamp(0, (self.size.y - 1) as i32);
         Vec2::new(tile.x as usize, tile.y as usize)
     }
+
+    pub fn tick(&mut self, delta: f32) {
+        for tile in &mut self.tiles {
+            if let Tile::PlacedTimedBlock(t) = tile {
+                *t -= delta;
+                if *t <= 0.0 {
+                    // Destroy the tile.
+                    *tile = Tile::Empty
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CollectibleState {
+    pub pos: Vec2<f32>,
+    pub ty: CollectibleType,
+    pub collect_time: Option<Instant>,
+}
+
+impl CollectibleState {
+    pub const HITBOX_RADIUS: f32 = 0.25;
+    pub const FADE_TIME: f32 = 0.5;
+
+    pub fn new(collectible: Collectible) -> Self {
+        Self {
+            pos: collectible.pos,
+            ty: collectible.ty,
+            collect_time: None,
+        }
+    }
+
+    pub fn is_collected(&self) -> bool {
+        self.collect_time.is_some()
+    }
+
+    pub fn mark_collected(&mut self) {
+        if self.collect_time.is_none() {
+            self.collect_time = Some(Instant::now())
+        }
+    }
+
+    pub fn is_touching(&self, entity_pos: Vec2f, entity_radius: f32) -> bool {
+        let max_distance = entity_radius + Self::HITBOX_RADIUS;
+        entity_pos.distance_sqr(self.pos) < max_distance * max_distance
+    }
+
+    pub fn should_be_destroyed(&self) -> bool {
+        self.collect_time
+            .is_some_and(|t| t.elapsed().as_secs_f32() > Self::FADE_TIME)
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -53,7 +105,11 @@ pub struct LevelState {
     /// The selected item stack index.
     pub selected_item: Option<usize>,
     /// The number of items placed currently.
-    pub placed_items: u32,
+    placed_items: u32,
+    /// The current collectibles in the level.
+    pub collectibles: Vec<CollectibleState>,
+    /// The indices of the collected stars in the level.
+    collected_star_indices: Vec<usize>,
 }
 
 pub enum LevelStateOutcome {
@@ -68,7 +124,7 @@ impl LevelState {
         LevelState::default()
     }
 
-    pub fn load_scratch_level(&mut self, index: usize, initial_selected_item: Option<usize>) {
+    pub fn load_scratch_level(&mut self, index: usize, initially_selected_item: Option<usize>) {
         let level = &crate::level::scratch::levels::LEVELS[index];
         let mut tiles = Vec::new();
         self.tile_state.size = Vec2::new(StoredScratchLevel::WIDTH, StoredScratchLevel::HEIGHT);
@@ -88,11 +144,19 @@ impl LevelState {
         self.player.gravity_direction = Direction::Down;
         self.flag = level.flag;
 
-        self.star_conditions = level.star_conditions.to_vec();
+        self.star_conditions = level
+            .star_conditions
+            .iter()
+            .map(|c| StarCondition::from(*c))
+            .collect();
         self.items = level.items.to_vec();
         self.finish_instant = None;
-
-        self.selected_item = initial_selected_item;
+        self.selected_item = initially_selected_item;
+        self.collectibles = level
+            .collectibles
+            .iter()
+            .map(|c| CollectibleState::new((*c).into()))
+            .collect();
     }
 
     pub fn is_finished(&self) -> bool {
@@ -100,6 +164,21 @@ impl LevelState {
     }
 
     pub fn tick(&mut self, delta: f32) -> LevelStateOutcome {
+        // Tick the tile state.
+        self.tile_state.tick(delta);
+
+        // Check for any collected collectibles.
+        for collectible in self.player.check_collectibles(&mut self.collectibles) {
+            collectible.mark_collected();
+            if let CollectibleType::Star(i) = collectible.ty {
+                self.collected_star_indices.push(i);
+            }
+        }
+
+        // Check for collectibles to destroy.
+        self.collectibles.retain(|s| !s.should_be_destroyed());
+
+        // Check if the player touched the void.
         if !self.player.tick(&self.tile_state, delta) {
             return LevelStateOutcome::Lose;
         }
@@ -129,6 +208,7 @@ impl LevelState {
                 .go_instant
                 .is_none_or(|s| s.elapsed().as_secs() <= *t as u64),
             StarCondition::Items(items) => self.placed_items <= *items,
+            StarCondition::Collect(i) => self.collected_star_indices.contains(i),
             _ => true, // TODO
         }
     }

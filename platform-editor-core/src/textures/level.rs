@@ -1,4 +1,7 @@
-use crate::{common_util::Direction, level::Tile};
+use crate::{
+    common_util::Direction,
+    level::{CollectibleType, Tile},
+};
 
 /// A structure that may or may not hold a texture or image for each direction.
 pub struct DirectionalTextures<T> {
@@ -37,19 +40,33 @@ pub struct PlacedBlockTextures<T> {
 }
 
 impl<T> PlacedBlockTextures<T> {
+    fn timer_index(&self, timer: f32) -> Option<usize> {
+        let ceil = usize::try_from(timer.ceil() as i32 - 1).ok()?;
+        if ceil >= self.timed.len() {
+            None
+        } else {
+            Some(ceil)
+        }
+    }
+
     /// Returns a reference to the texture used for a hypothetical timed placed block.
-    pub fn timed_texture(&self, timer: i32) -> &T {
-        &self.timed[(timer as usize).min(self.timed.len() - 1)]
+    pub fn timed_texture(&self, timer: usize) -> &T {
+        &self.timed[timer - 1]
     }
 
-    /// Returns a mutable reference to the texture used for a hypothetical timed placed block.
-    pub fn timed_texture_mut(&mut self, timer: i32) -> &mut T {
-        &mut self.timed[(timer as usize).min(self.timed.len() - 1)]
+    /// Returns a mutable reference to the texture used for a hypothetical timed placed block (if any).
+    pub fn timed_texture_mut(&mut self, timer: usize) -> &mut T {
+        &mut self.timed[timer - 1]
     }
 
-    /// Returns the texture used for an already-placed timed block.
-    pub fn runtime_timed_texture(&self, timer: f32) -> &T {
-        &self.timed[(timer.ceil() as usize).min(self.timed.len() - 1)]
+    /// Returns a reference to the texture used for an already-placed timed block (if any).
+    pub fn runtime_timed_texture(&self, timer: f32) -> Option<&T> {
+        self.timer_index(timer).map(|t| &self.timed[t])
+    }
+
+    /// Returns a mutable reference to the texture used for an already-placed timed block.
+    pub fn runtime_timed_texture_mut(&mut self, timer: f32) -> Option<&mut T> {
+        self.timer_index(timer).map(|t| &mut self.timed[t])
     }
 }
 
@@ -83,14 +100,7 @@ impl<T> TileTextures<T> {
             Tile::Grass(i) => Some(&self.grass[*i]),
             Tile::Dirt(i) => Some(&self.dirt[*i]),
             Tile::PlacedBlock => Some(&self.placed_blocks.permanent),
-            Tile::PlacedTimedBlock(t) => {
-                let shown = t.floor() as usize;
-                if shown < self.placed_blocks.timed.len() {
-                    Some(&self.placed_blocks.timed[shown])
-                } else {
-                    None
-                }
-            }
+            Tile::PlacedTimedBlock(t) => self.placed_blocks.runtime_timed_texture(*t),
             Tile::Shooter(direction) => self.shooters.get(*direction),
             Tile::Spike(direction) => self.spikes.get(*direction),
         }
@@ -105,16 +115,32 @@ impl<T> TileTextures<T> {
             Tile::Grass(i) => Some(&mut self.grass[*i]),
             Tile::Dirt(i) => Some(&mut self.dirt[*i]),
             Tile::PlacedBlock => Some(&mut self.placed_blocks.permanent),
-            Tile::PlacedTimedBlock(t) => {
-                let shown = t.floor() as usize;
-                if shown < self.placed_blocks.timed.len() {
-                    Some(&mut self.placed_blocks.timed[shown])
-                } else {
-                    None
-                }
-            }
+            Tile::PlacedTimedBlock(t) => self.placed_blocks.runtime_timed_texture_mut(*t),
             Tile::Shooter(direction) => self.shooters.get_mut(*direction),
             Tile::Spike(direction) => self.spikes.get_mut(*direction),
+        }
+    }
+}
+
+pub struct CollectibleTextures<T> {
+    pub star: T,
+    pub gravity_orb: T,
+}
+
+impl<T> CollectibleTextures<T> {
+    pub fn texture_from_collectible(&self, collectible: CollectibleType) -> Option<&T> {
+        match collectible {
+            CollectibleType::Star(_) => Some(&self.star),
+            CollectibleType::GravityOrb => Some(&self.gravity_orb),
+            _ => None,
+        }
+    }
+
+    pub fn texture_from_collectible_mut(&mut self, collectible: CollectibleType) -> Option<&mut T> {
+        match collectible {
+            CollectibleType::Star(_) => Some(&mut self.star),
+            CollectibleType::GravityOrb => Some(&mut self.gravity_orb),
+            _ => None,
         }
     }
 }

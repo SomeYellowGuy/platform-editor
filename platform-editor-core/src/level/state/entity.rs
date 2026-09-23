@@ -1,10 +1,10 @@
 use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
-    level::{Tile, state::TileState},
+    level::{
+        Tile,
+        state::{CollectibleState, TileState},
+    },
 };
-
-/// The size of an entity relative to a tile (whose size is considered to be `1.0`).
-pub const ENTITY_SIZE: f32 = 0.75;
 
 /// The acceleration due to gravity.
 pub const GRAVITY: f32 = 0.47;
@@ -36,8 +36,14 @@ impl Default for Entity {
 }
 
 impl Entity {
+    /// The size of an entity relative to the measurement of a tile (whose size is considered to be `1.0`).
+    pub const SIZE: f32 = Self::RADIUS * 2.0;
+
+    /// The radius of an entity relative to measurement of a tile (whose size is considered to be `1.0`).
+    pub const RADIUS: f32 = 0.375;
+
     pub fn hitbox(&self) -> Rectf {
-        Rectf::from_center(self.pos, Vec2::new(ENTITY_SIZE, ENTITY_SIZE))
+        Rectf::from_center(self.pos, Vec2::new(Self::SIZE, Self::SIZE))
     }
 
     pub fn gravity(&self) -> Vec2f {
@@ -134,5 +140,19 @@ impl Entity {
             }
         }
         false
+    }
+
+    /// Checks for any possible collectibles this entity is colliding with, returning
+    /// the mutable references to the collided collectibles.
+    pub fn check_collectibles<'a>(
+        &self,
+        collectibles: &'a mut [CollectibleState],
+    ) -> Vec<&'a mut CollectibleState> {
+        collectibles
+            .iter_mut()
+            .filter_map(|c| {
+                (!c.is_collected() && c.is_touching(self.pos, Self::RADIUS)).then_some(c)
+            })
+            .collect()
     }
 }

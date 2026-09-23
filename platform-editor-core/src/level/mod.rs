@@ -6,7 +6,7 @@ use crate::{
 pub mod scratch;
 pub mod state;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LockColor {
     Red,
     Orange,
@@ -140,7 +140,7 @@ impl Item {
     pub fn icon_texture<'a, T>(&self, textures: &'a TileTextures<T>) -> Option<&'a T> {
         match self {
             Self::Block => Some(&textures.placed_blocks.permanent),
-            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture(*t)),
+            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture(*t as usize)),
             Self::Moving(moving_block_item) => moving_block_item.icon_texture(textures),
             // TODO
             Self::GravityOrb => None,
@@ -151,7 +151,7 @@ impl Item {
     pub fn icon_texture_mut<'a, T>(&self, textures: &'a mut TileTextures<T>) -> Option<&'a mut T> {
         match self {
             Self::Block => Some(&mut textures.placed_blocks.permanent),
-            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture_mut(*t)),
+            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture_mut(*t as usize)),
             Self::Moving(moving_block_item) => moving_block_item.icon_texture_mut(textures),
             // TODO
             Self::GravityOrb => None,
@@ -180,7 +180,7 @@ impl Item {
 pub enum ItemPlaceOutcome {
     Tile(Tile),
     Moving(MovingBlockItem),
-    // TODO: Add collectable outcome
+    // TODO: Add collectible outcome
 }
 
 /// Represents a type of item (which can be placed) and its remaining count.
@@ -193,5 +193,25 @@ pub struct ItemStack {
 impl ItemStack {
     pub const fn new(item: Item, count: u32) -> Self {
         Self { item, count }
+    }
+}
+
+/// Represents a type of collectible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CollectibleType {
+    Star(usize),
+    GravityOrb,
+    Key(LockColor),
+}
+
+#[derive(Debug, Clone)]
+pub struct Collectible {
+    pub pos: Vec2f,
+    pub ty: CollectibleType,
+}
+
+impl Collectible {
+    pub fn new(pos: Vec2f, ty: CollectibleType) -> Self {
+        Self { pos, ty }
     }
 }
