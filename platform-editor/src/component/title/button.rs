@@ -143,7 +143,7 @@ impl Render for ButtonBase {
 
 impl Logic for ButtonBase {
     fn run_logic(&mut self, data: &mut LogicData) {
-        let point = data.mouse_fpos();
+        let point = data.mouse_pos();
         let hovered = button_rect(self, 0.0).contains_point(point);
 
         self.update_hold_time(data.delta_time, hovered);

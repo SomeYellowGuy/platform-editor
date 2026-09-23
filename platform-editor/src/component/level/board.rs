@@ -89,7 +89,7 @@ impl Render for BoardBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
         let t = data.transition_offset(1.8);
         let (alpha, offset) = if data.transitioned_from(Screen::Level) {
-            ((255.0 - 15.0 * t) as u8, 0.0)
+            ((255.0 - 5.0 * t) as u8, 0.0)
         } else {
             (u8::MAX, t * t)
         };
@@ -220,7 +220,7 @@ impl Logic for BoardBase {
         let delta = data.delta_time as f32 / 1_000_000_000.0;
 
         let mouse_up = data.is_mouse_button_up(MouseButton::Left);
-        let mouse_pos = data.mouse_fpos();
+        let mouse_pos = data.mouse_pos();
 
         let left = data.is_held(Scancode::Left);
         let right = data.is_held(Scancode::Right);

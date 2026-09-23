@@ -2,7 +2,10 @@ use platform_editor_core::{
     common_util::{self, ScrollInfo},
     component::{
         BackButtonBase, BackButtonMode, ComponentId,
-        level::{BoardBase, ItemTabBase, bottom_bar::BottomBarBase},
+        level::{
+            BoardBase, ItemTabBase,
+            bottom_bar::{BottomBarBase, BottomBarButtonBase, BottomBarButtonType},
+        },
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
         title::{
             TitleBase,
@@ -90,6 +93,14 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, app_data: &mut AppData) 
                 11,
                 10,
             );
+            for ty in BottomBarButtonType::ALL {
+                map.insert(
+                    ComponentId::BottomBarButton(ty),
+                    Component::BottomBarButton(BottomBarButtonBase::new(ty)),
+                    12,
+                    15,
+                );
+            }
 
             app_data.level_state = Some(level_state);
         }
@@ -118,6 +129,7 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
                 ComponentId::Board
                     | ComponentId::ItemTab
                     | ComponentId::BottomBar
+                    | ComponentId::BottomBarButton(_)
                     | ComponentId::EndDialog
                     | ComponentId::EndDialogButton(_)
             )
@@ -131,7 +143,7 @@ pub fn on_exit(screen: Screen, map: &mut ComponentMap) {
 pub fn tick(screen: Screen, logic_data: &mut LogicData) {
     if screen == Screen::LevelSelect {
         let delta_seconds = logic_data.delta_time as f32 / 1_000_000_000.0;
-        let pos = logic_data.mouse_fpos().y;
+        let pos = logic_data.mouse_pos().y;
 
         common_util::scroll(ScrollInfo {
             held: logic_data.is_mouse_button_held(MouseButton::Left),

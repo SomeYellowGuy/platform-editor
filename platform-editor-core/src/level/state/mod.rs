@@ -52,6 +52,8 @@ pub struct LevelState {
     pub items: Vec<ItemStack>,
     /// The selected item stack index.
     pub selected_item: Option<usize>,
+    /// The number of items placed currently.
+    pub placed_items: u32,
 }
 
 pub enum LevelStateOutcome {
@@ -124,7 +126,7 @@ impl LevelState {
             StarCondition::Time(t) => self
                 .go_instant
                 .is_none_or(|s| s.elapsed().as_secs() <= *t as u64),
-
+            StarCondition::Items(items) => self.placed_items <= *items,
             _ => true, // TODO
         }
     }
@@ -163,7 +165,11 @@ impl LevelState {
         stack.count -= 1;
         let outcome = stack.item.place_outcome();
         // Apply the outcome.
-        self.apply_outcome(pos, outcome)
+        let outcome_is_successful = self.apply_outcome(pos, outcome);
+        if outcome_is_successful {
+            self.placed_items += 1;
+        }
+        outcome_is_successful
     }
 
     pub fn apply_outcome(&mut self, pos: Vec2<usize>, outcome: ItemPlaceOutcome) -> bool {

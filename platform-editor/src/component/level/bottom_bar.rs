@@ -1,17 +1,20 @@
 use platform_editor_core::{
     common_util::Vec2f,
     component::{
-        Event,
-        level::bottom_bar::{BottomBarBase, TimeState},
+        Event, Hold,
+        level::bottom_bar::{BottomBarBase, BottomBarButtonBase, BottomBarButtonType, TimeState},
     },
-    screen::Screen,
+    screen::{Screen, TransitionCall, TransitionData},
 };
-use sdl3::render::{FPoint, FRect};
+use sdl3::{
+    mouse::MouseButton,
+    render::{BlendMode, FPoint, FRect},
+};
 
 use crate::{
     HEIGHT, WIDTH,
     logic::Logic,
-    render::Render,
+    render::{Render, RenderData},
     textures::TextAlignment,
     util::{FRectExt, IntoFPoint},
 };
@@ -21,14 +24,18 @@ pub const TEXTURE_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 +
 pub const TEXTURE_SCALE: f32 = 2.0;
 pub const TEXTURE_SIZE: (f32, f32) = (TEXTURE_SCALE * 694.0, TEXTURE_SCALE * 135.0);
 
+fn render_offset(data: &RenderData) -> f32 {
+    if data.transitioned_from(Screen::Level) {
+        0.0
+    } else {
+        let t = data.transition_offset(0.9);
+        t * t / 2.0
+    }
+}
+
 impl Render for BottomBarBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
-        let offset = if data.transitioned_from(Screen::Level) {
-            0.0
-        } else {
-            let t = data.transition_offset(0.9);
-            t * t / 2.0
-        };
+        let offset = render_offset(data);
         let text_y = TEXTURE_CENTER.y - 95.0 + offset;
 
         data.canvas.copy(
@@ -85,6 +92,22 @@ impl Render for BottomBarBase {
     }
 }
 
+pub const BUTTON_BASE_SIZE: f32 = 60.0;
+pub const BUTTON_Y: f32 = 687.0;
+pub const BUTTON_GAP: f32 = 70.0;
+
+fn button_pos(ty: BottomBarButtonType) -> Vec2f {
+    Vec2f::new(
+        WIDTH as f32 - (HEIGHT as f32 - BUTTON_Y)
+            + match ty {
+                BottomBarButtonType::Reset => -2.0 * BUTTON_GAP,
+                BottomBarButtonType::Options => -BUTTON_GAP,
+                BottomBarButtonType::LevelSelect => 0.0,
+            },
+        BUTTON_Y,
+    )
+}
+
 impl Logic for BottomBarBase {
     fn handles_events(&self) -> bool {
         true
@@ -95,5 +118,55 @@ impl Logic for BottomBarBase {
             Event::LevelGo(instant) => self.state = TimeState::Active(*instant),
             Event::LevelFinish(time) => self.state = TimeState::Finished(*time),
         }
+    }
+}
+
+impl Render for BottomBarButtonBase {
+    fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
+        let offset = render_offset(data);
+        let alpha_offset = data.transition_offset(1.0 / 10.0).max(0.0);
+
+        let texture = match self.ty {
+            BottomBarButtonType::Reset => &mut data.textures.level.bottom_bar.reset,
+            BottomBarButtonType::Options => &mut data.textures.level.bottom_bar.options,
+            BottomBarButtonType::LevelSelect => &mut data.textures.level.bottom_bar.level_select,
+        };
+
+        let size = BUTTON_BASE_SIZE * self.scale_multiplier();
+        let rect = FRect::from_center(
+            (button_pos(self.ty) + Vec2f::new(0.0, offset)).into_fpoint(),
+            size,
+            size,
+        );
+
+        texture.set_blend_mode(BlendMode::Blend);
+        texture.set_alpha_mod((255.0 * (1.0 - alpha_offset)) as u8);
+
+        data.canvas.copy(texture, None, rect)?;
+
+        Ok(())
+    }
+}
+
+impl Logic for BottomBarButtonBase {
+    fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
+        let hovered = button_pos(self.ty).distance_sqr(data.mouse_pos())
+            < BUTTON_BASE_SIZE * BUTTON_BASE_SIZE;
+        if data.is_mouse_button_up(MouseButton::Left) && hovered {
+            match self.ty {
+                BottomBarButtonType::Reset => {
+                    data.reset_level_call();
+                }
+                BottomBarButtonType::LevelSelect => {
+                    data.set_transition_call(TransitionCall::Start(TransitionData::new(
+                        600_000_000,
+                        800_000_000,
+                        Screen::LevelSelect,
+                    )))
+                }
+                BottomBarButtonType::Options => {}
+            }
+        }
+        self.update_hold_time(data.delta_time, hovered);
     }
 }

@@ -1,9 +1,12 @@
-use platform_editor_core::{component::Event, screen::TransitionCall};
+use platform_editor_core::{
+    common_util::Vec2f,
+    component::Event,
+    screen::{Screen, TransitionCall, TransitionData},
+};
 use sdl3::{
     keyboard::{Keycode, Scancode},
     mouse::MouseButton,
-    rect::Point,
-    render::{Canvas, FPoint},
+    render::Canvas,
     video::Window,
 };
 
@@ -34,6 +37,15 @@ pub struct LogicData<'app> {
 impl LogicData<'_> {
     pub fn set_transition_call(&mut self, call: TransitionCall) {
         self.transition_call = call;
+    }
+
+    /// A type of transition specifically to reset a level.
+    pub fn reset_level_call(&mut self) {
+        self.set_transition_call(TransitionCall::Start(TransitionData::new(
+            0,
+            300_000_000,
+            Screen::Level,
+        )));
     }
 
     /// Returns whether the given `MouseButton` is held.
@@ -78,17 +90,10 @@ impl LogicData<'_> {
         self.input_data.keyboard_state.is_scancode_pressed(code)
     }
 
-    /// Returns the current mouse position as an [`FPoint`], adjusted for logical presentation.
+    /// Returns the current mouse position as a [`Vec2f`], adjusted for logical presentation.
     #[must_use]
-    pub fn mouse_fpos(&self) -> FPoint {
-        self.input_data.mouse_pos
-    }
-
-    /// Returns the current mouse position as a [`Point`], adjusted for logical presentation.
-    #[must_use]
-    pub fn mouse_pos(&self) -> Point {
-        let mouse = self.mouse_fpos();
-        Point::new(mouse.x as i32, mouse.y as i32)
+    pub fn mouse_pos(&self) -> Vec2f {
+        Vec2f::new(self.input_data.mouse_pos.x, self.input_data.mouse_pos.y)
     }
 
     /// Adds an event to queue, handled after the current logical tick.

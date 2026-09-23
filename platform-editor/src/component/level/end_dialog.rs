@@ -17,7 +17,7 @@ use crate::{
     logic::Logic,
     render::{DrawResult, Render, RenderData},
     textures::{DynamicText, TextAlignment},
-    util::{FPointExt, FRectExt, IntoFPoint},
+    util::{FRectExt, IntoFPoint},
 };
 
 pub const DIALOG_CENTER: FPoint = FPoint {
@@ -214,7 +214,7 @@ fn render_star(
         0.0
     };
 
-    let size_multiplier = 1.0 + 0.2 * (t * t);
+    let size_multiplier = 1.0 + if collected { 0.2 * (t * t) } else { 0.0 };
     let size = STAR_SIZE * size_multiplier;
 
     data.canvas.copy_ex(
@@ -288,8 +288,8 @@ pub const BUTTON_BASE_SIZE: f32 = 160.0;
 pub const BUTTON_Y: f32 = 585.0;
 pub const BUTTON_GAP: f32 = 175.0;
 
-fn fpoint_for_button(ty: EndDialogButtonType) -> FPoint {
-    FPoint::new(
+fn button_pos(ty: EndDialogButtonType) -> Vec2f {
+    Vec2f::new(
         WIDTH as f32 / 2.0
             + match ty {
                 EndDialogButtonType::LevelSelect => 0.0,
@@ -326,8 +326,7 @@ impl Render for EndDialogButtonBase {
         texture.set_alpha_mod(alpha_mod);
 
         let size = BUTTON_BASE_SIZE * self.scale_multiplier();
-
-        let rect = FRect::from_center(fpoint_for_button(self.ty), size, size);
+        let rect = FRect::from_center(button_pos(self.ty).into_fpoint(), size, size);
 
         data.canvas.copy(texture, None, rect)?;
 
@@ -341,20 +340,14 @@ impl Logic for EndDialogButtonBase {
             return;
         }
 
-        let hovered = fpoint_for_button(self.ty).distance_sqr(data.mouse_fpos())
+        let hovered = button_pos(self.ty).distance_sqr(data.mouse_pos())
             < (BUTTON_BASE_SIZE * BUTTON_BASE_SIZE) / 4.0;
 
         self.update_hold_time(data.delta_time, hovered);
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             match self.ty {
-                EndDialogButtonType::LevelSelect => {
-                    data.set_transition_call(TransitionCall::Start(TransitionData::new(
-                        600_000_000,
-                        800_000_000,
-                        Screen::LevelSelect,
-                    )))
-                }
+                EndDialogButtonType::LevelSelect => data.reset_level_call(),
                 _ => {
                     if self.ty == EndDialogButtonType::Next {
                         data.app_data.level.playing_level += 1;

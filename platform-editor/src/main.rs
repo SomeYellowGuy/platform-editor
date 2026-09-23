@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use platform_editor_core::LevelSave;
+use platform_editor_core::common_util::Vec2f;
 use platform_editor_core::component::ComponentMapQueryType;
 use platform_editor_core::level::state::LevelState;
 use platform_editor_core::options::Options;
@@ -127,7 +128,7 @@ pub struct ExtractedData<'i> {
     pub y_scroll: f32,
     pub playing_level: usize,
     pub level_state: Option<&'i LevelState>,
-    pub mouse_pos: FPoint,
+    pub mouse_pos: Vec2f,
 }
 
 impl App {
@@ -281,7 +282,7 @@ impl App {
             queued: QueuedData::new(),
         };
 
-        let mouse_pos = logic_data.mouse_fpos();
+        let mouse_pos = logic_data.mouse_pos();
 
         let call = if !transition_manager.is_transitioning() {
             self.run_game_logic(components, &mut logic_data, transition_manager.screen);

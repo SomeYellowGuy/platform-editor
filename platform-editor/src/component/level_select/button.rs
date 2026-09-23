@@ -118,7 +118,7 @@ impl Logic for LevelSelectButtonBase {
             SIDE,
             SIDE,
         );
-        let hovered = hitbox.contains_point(data.mouse_fpos());
+        let hovered = hitbox.contains_point(data.mouse_pos());
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             // Play the level.

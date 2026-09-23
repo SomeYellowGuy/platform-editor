@@ -3,7 +3,7 @@ use platform_editor_core::{
         BackButtonBase, BackButtonMode, Event, Hold,
         level::{
             BoardBase, ItemTabBase,
-            bottom_bar::BottomBarBase,
+            bottom_bar::{BottomBarBase, BottomBarButtonBase},
             end_dialog::{EndDialogBase, EndDialogButtonBase},
         },
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
@@ -57,7 +57,7 @@ impl Render for BackButtonBase {
 impl Logic for BackButtonBase {
     fn run_logic(&mut self, data: &mut LogicData) {
         let pos = FPoint::new(self.pos.0 as f32, self.pos.1 as f32);
-        let mouse_pos = data.mouse_fpos();
+        let mouse_pos = data.mouse_pos();
 
         let (dx, dy) = (pos.x - mouse_pos.x, pos.y - mouse_pos.y);
         let distance_sq = dx * dx + dy * dy;
@@ -125,6 +125,7 @@ pub enum Component {
     Board(BoardBase),
     ItemTab(ItemTabBase),
     BottomBar(BottomBarBase),
+    BottomBarButton(BottomBarButtonBase),
 
     EndDialog(EndDialogBase),
     EndDialogButton(EndDialogButtonBase),
@@ -142,6 +143,7 @@ impl_components! {
     Board,
     ItemTab,
     BottomBar,
+    BottomBarButton,
 
     EndDialog,
     EndDialogButton

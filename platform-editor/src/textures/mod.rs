@@ -203,6 +203,10 @@ pub struct BottomBarTextures<'c> {
     pub base: Texture<'c>,
     pub level_text: DynamicText<'c>,
     pub time_text: DynamicText<'c>,
+
+    pub reset: Texture<'c>,
+    pub options: Texture<'c>,
+    pub level_select: Texture<'c>,
 }
 
 impl<'c> BottomBarTextures<'c> {
@@ -211,6 +215,10 @@ impl<'c> BottomBarTextures<'c> {
             base: load_texture(creator, "assets/gfx/level/bottom_bar/base.png")?,
             level_text: DynamicText::new(creator),
             time_text: DynamicText::new(creator),
+
+            reset: load_texture(creator, "assets/gfx/level/bottom_bar/reset.png")?,
+            options: load_texture(creator, "assets/gfx/level/bottom_bar/options.png")?,
+            level_select: load_texture(creator, "assets/gfx/level/bottom_bar/level_select.png")?,
         })
     }
 }

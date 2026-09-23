@@ -143,7 +143,7 @@ fn item_hitbox(i: usize, offset: f32, selected: bool) -> FRect {
 impl Logic for ItemTabBase {
     fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
         // Check for clicking an item stack.
-        let mouse_pos = data.mouse_fpos();
+        let mouse_pos = data.mouse_pos();
         if data.is_mouse_button_up(MouseButton::Left)
             && let Some(state) = &mut data.app_data.level_state
         {

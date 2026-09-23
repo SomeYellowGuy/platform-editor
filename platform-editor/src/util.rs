@@ -10,7 +10,7 @@ pub trait FRectExt {
     fn from_center(center: FPoint, width: f32, height: f32) -> FRect;
 
     /// Returns whether this rectangle contains the given point.
-    fn contains_point(self, point: FPoint) -> bool;
+    fn contains_point(self, point: impl IntoFPoint) -> bool;
 
     /// Converts this rectangle into a [`Rect`].
     fn into_rect(self) -> Rect;
@@ -26,11 +26,10 @@ impl FRectExt for FRect {
         )
     }
 
-    fn contains_point(self, point: FPoint) -> bool {
-        self.x <= point.x
-            && self.x + self.w >= point.x
-            && self.y <= point.y
-            && self.y + self.h >= point.y
+    fn contains_point(self, point: impl IntoFPoint) -> bool {
+        let point = point.into_fpoint();
+        (self.x..=(self.x + self.w)).contains(&point.x)
+            && (self.y..=(self.y + self.h)).contains(&point.y)
     }
 
     fn into_rect(self) -> Rect {
@@ -53,25 +52,5 @@ impl IntoFPoint for FPoint {
 impl IntoFPoint for Vec2<f32> {
     fn into_fpoint(self) -> FPoint {
         FPoint::new(self.x, self.y)
-    }
-}
-
-/// An external trait that provides extraneous [`FPoint`] methods.
-pub trait FPointExt: Sized {
-    /// Returns the squared distance of this point from the other one.
-    fn distance_sqr(self, other: impl IntoFPoint) -> f32;
-
-    /// Returns the distance of this point from the other one.
-    fn distance(self, other: impl IntoFPoint) -> f32 {
-        self.distance_sqr(other).sqrt()
-    }
-}
-
-impl FPointExt for FPoint {
-    fn distance_sqr(self, other: impl IntoFPoint) -> f32 {
-        let other = other.into_fpoint();
-        let dx = self.x - other.x;
-        let dy = self.y - other.y;
-        dx * dx + dy * dy
     }
 }

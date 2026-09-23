@@ -6,7 +6,10 @@ use std::{
     time::Instant,
 };
 
-use crate::component::{level::end_dialog::EndDialogButtonType, title::button::ButtonType};
+use crate::component::{
+    level::{bottom_bar::BottomBarButtonType, end_dialog::EndDialogButtonType},
+    title::button::ButtonType,
+};
 
 pub mod level;
 pub mod level_select;
@@ -59,6 +62,7 @@ pub enum ComponentId {
     Board,
     ItemTab,
     BottomBar,
+    BottomBarButton(BottomBarButtonType),
     EndDialog,
     EndDialogButton(EndDialogButtonType),
 

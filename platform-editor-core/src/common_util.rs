@@ -183,6 +183,32 @@ assign!(std::ops::SubAssign, sub_assign, Sub, -);
 assign!(std::ops::MulAssign, mul_assign, Mul, *);
 assign!(std::ops::DivAssign, div_assign, Div, /);
 
+macro_rules! impl_distance_methods {
+    ($( $(| $sqrt:ident |)? $ty:ty),+) => {
+        $(
+            impl Vec2<$ty> {
+                $(
+                    /// Returns the distance between the point represented by this
+                    /// vector and that represented by `other`.
+                    pub fn distance(self, other: Self) -> $ty {
+                        self.distance_sqr(other).$sqrt()
+                    }
+                )?
+
+                /// Returns the square of the distance between the point
+                /// represented by this vector and that represented by `other`.
+                pub fn distance_sqr(self, other: Self) -> $ty {
+                    let dx = self.x - other.x;
+                    let dy = self.y - other.y;
+                    dx * dx + dy * dy
+                }
+            }
+        )+
+    };
+}
+
+impl_distance_methods!(|sqrt| f32, |sqrt| f64, i8, i16, i32, i64);
+
 pub type Vec2f = Vec2<f32>;
 pub type Vec2i = Vec2<i32>;
 
