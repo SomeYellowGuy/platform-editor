@@ -122,7 +122,7 @@ impl StoredScratchTile {
                 Some(Tile::Dirt(if seed < 5 { seed } else { 0 }))
             }
             Self::Shooter(shooter_direction) => Some(Tile::Shooter((*shooter_direction).into())),
-            Self::Spike(spike_direction) => Some(Tile::Shooter((*spike_direction).into())),
+            Self::Spike(spike_direction) => Some(Tile::Spike((*spike_direction).into())),
             Self::Lock(_, _) => None,
         }
     }

@@ -76,9 +76,9 @@ fn render_items(
     let box_texture = &data.textures.level.item_box;
     let mut text = DynamicText::new(&data.canvas.texture_creator());
 
-    for (i, stack) in items.iter().enumerate().rev() {
+    for (i, stack) in items.iter().enumerate() {
         let selected = selected.is_some_and(|s| s == i);
-        let hitbox = item_hitbox(i, offset, selected);
+        let hitbox = item_hitbox(items.len(), i, offset, selected);
 
         // Draw the box itself.
         data.canvas.copy(box_texture, None, hitbox)?;
@@ -88,7 +88,7 @@ fn render_items(
         const ITEM_BOX_ICON_OFFSET: f32 = 2.0;
         const ITEM_BOX_COUNT_OFFSET: Vec2f = Vec2f::new(34.0, 15.0);
 
-        let center = item_box_center(i, offset);
+        let center = item_box_center(items.len(), i, offset);
         let multiplier = if selected {
             SELECTED_ITEM_BOX_SCALE_MULTIPLIER
         } else {
@@ -125,19 +125,23 @@ fn render_items(
     Ok(())
 }
 
-fn item_box_center(i: usize, offset: f32) -> Vec2f {
+fn item_box_center(boxes: usize, i: usize, offset: f32) -> Vec2f {
     const CORNER_DISTANCE: f32 = HEADER_HEIGHT / 2.0;
-    let i_offset = -Vec2f::new(i as f32 * ITEM_BOX_GAP, 0.0);
+    let i_offset = -Vec2f::new((boxes - i - 1) as f32 * ITEM_BOX_GAP, 0.0);
     Vec2f::new(WIDTH as f32 - CORNER_DISTANCE, CORNER_DISTANCE - offset) + i_offset
 }
 
-fn item_hitbox(i: usize, offset: f32, selected: bool) -> FRect {
+fn item_hitbox(boxes: usize, i: usize, offset: f32, selected: bool) -> FRect {
     let size = if selected {
         ITEM_BOX_SIZE * SELECTED_ITEM_BOX_SCALE_MULTIPLIER
     } else {
         ITEM_BOX_SIZE
     };
-    FRect::from_center((item_box_center(i, offset)).into_fpoint(), size, size)
+    FRect::from_center(
+        (item_box_center(boxes, i, offset)).into_fpoint(),
+        size,
+        size,
+    )
 }
 
 impl Logic for ItemTabBase {
@@ -147,9 +151,9 @@ impl Logic for ItemTabBase {
         if data.is_mouse_button_up(MouseButton::Left)
             && let Some(state) = &mut data.app_data.level_state
         {
-            for i in (0..state.items.len()).rev() {
+            for i in 0..state.items.len() {
                 let selected = state.selected_item.is_some_and(|s| s == i);
-                if item_hitbox(i, 0.0, selected).contains_point(mouse_pos) {
+                if item_hitbox(state.items.len(), i, 0.0, selected).contains_point(mouse_pos) {
                     state.selected_item = Some(i);
                     break;
                 }

@@ -1,9 +1,9 @@
 use crate::{
-    common_util::{Vec2, Vec2f},
+    common_util::{Direction, Vec2, Vec2f},
     level::{
-        Item, ItemStack,
+        Item, ItemStack, MovingBlockItem,
         scratch::{
-            ScratchCollectible as Collectible, ScratchCollectibleType as CollectableType,
+            ScratchCollectible as Collectible, ScratchCollectibleType as CollectibleType,
             ScratchStarCondition as StarCondition, StoredScratchLevel as Level,
         },
     },
@@ -32,7 +32,57 @@ pub const LEVELS: &[Level] = &[
         .start_pos(Vec2::new(1.5, 1.8))
         .flag_pos(Vec2::new(11.5, 4.5))
         .items(&[ItemStack::new(Item::TimedBlock(3), 1)])
+        .collectibles(&[Collectible::new(Vec2f::new(11.0, 1.0), CollectibleType::Star)])
         .stars(StarCondition::Collect, StarCondition::Items(0))
-        .collectibles(&[Collectible::new(Vec2f::new(7.5, 0.75), CollectableType::Star)])
         .build(),
+    // Level 4
+    Level::builder(br"00000000000000000000000000110000000000055555555550000000000000000000000000000000000000000002200000000000")
+        .start_pos(Vec2::new(1.0, 6.2))
+        .flag_pos(Vec2::new(1.0, 1.5))
+        .items(&[ItemStack::new(Item::Block, 9)])
+        .stars(StarCondition::Items(7), StarCondition::Time(25))
+        .build(),
+    // Level 5
+    Level::builder(br"00000000000000000000000000000000000000000000000006000000000006222000000006233300010002233332222222333333")
+        .start_pos(Vec2::new(1.0, 6.0))
+        .flag_pos(Vec2::new(12.0, 3.5))
+        .items(&[ItemStack::new(Item::TimedBlock(3), 4), ItemStack::new(Item::TimedBlock(2), 1)])
+        .collectibles(&[Collectible::new(Vec2f::new(5.5, 1.5), CollectibleType::Star)])
+        .stars(StarCondition::Collect, StarCondition::Items(3))
+        .build(),
+    // Level 6
+    Level::builder(br"00003300000000000330000000220063002200033006300330003300330063222370000003333333000000333333322222233333")
+        .start_pos(Vec2::new(1.0, 1.2))
+        .flag_pos(Vec2::new(12.0, 3.5))
+        .items(&[ItemStack::new(Item::Block, 3), ItemStack::new(Item::TimedBlock(2), 4)])
+        .stars(StarCondition::Items(5), StarCondition::Time(22))
+        .build(),
+    // Level 7
+    Level::builder(br"000GGG9GGG000000000000000000000000000000000000000000000000000000000000000000000008800088000222GG222GG222")
+        .start_pos(Vec2::new(1.0, 5.9))
+        .flag_pos(Vec2::new(12.0, 6.5))
+        .items(&[ItemStack::new(Item::Moving(MovingBlockItem::Single(Direction::Up)), 2)])
+        .collectibles(&[Collectible::new(Vec2f::new(11.5, 0.5), CollectibleType::Star)])
+        .stars(StarCondition::Collect, StarCondition::Time(9))
+        .build(),
+    // Level 8
+    Level::builder(br"99999999900000000000000000000000000092229900000000003000000000000000000000002200000000000332288888888833")
+        .start_pos(Vec2::new(1.0, 6.0))
+        .flag_pos(Vec2::new(12.0, 1.5))
+        .items(&[
+            ItemStack::new(Item::TimedBlock(2), 8),
+            ItemStack::new(Item::Moving(MovingBlockItem::Single(Direction::Left)), 1),
+            ItemStack::new(Item::Moving(MovingBlockItem::Single(Direction::Right)), 1)
+        ])
+        .stars(StarCondition::Items(4), StarCondition::Time(24))
+        .build(),
+    // Level 9
+    Level::builder(br"00000000000000000000000000000000000500000000000010000000000001000000000000100010000000010002222222222222")
+        .start_pos(Vec2::new(1.5, 4.5))
+        .flag_pos(Vec2::new(11.5, 6.5))
+        .items(&[
+            ItemStack::new(Item::TimedBlock(1), 5)
+        ])
+        .stars(StarCondition::Items(3), StarCondition::Time(10))
+        .build()
 ];
