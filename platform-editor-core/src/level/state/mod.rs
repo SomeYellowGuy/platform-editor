@@ -1,9 +1,9 @@
 pub mod entity;
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use crate::{
-    common_util::{Direction, Vec2, Vec2f, Vec2i},
+    common_util::{Bidirection, Direction, Rectf, Vec2, Vec2f, Vec2i},
     component::level::end_dialog::StarStatus,
     level::{
         Collectible, CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, StarCondition, Tile,
@@ -46,6 +46,25 @@ impl TileState {
                 }
             }
         }
+    }
+
+    pub fn is_colliding_with_hitbox(&self, hitbox: Rectf) -> bool {
+        if !Rectf::new(Vec2f::new(0.0, 0.0), self.size.map(|u| u as f32)).contains_rect(hitbox) {
+            return true;
+        }
+
+        for y in 0..self.size.y {
+            for x in 0..self.size.x {
+                let tile = self.tile(x, y);
+                let tile_hitbox = tile.hitbox(Vec2f::new(x as f32, y as f32));
+                if let Some(tile_hitbox) = tile_hitbox
+                    && tile_hitbox.intersects(hitbox)
+                {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -110,6 +129,11 @@ pub struct LevelState {
     pub collectibles: Vec<CollectibleState>,
     /// The indices of the collected stars in the level.
     collected_star_indices: Vec<usize>,
+
+    /// The active shooter instances in the level.
+    pub shooters: Vec<ShooterState>,
+    /// The active shooter bullets in the level.
+    pub shooter_bullets: Vec<ShooterBullet>,
 }
 
 pub enum LevelStateOutcome {
@@ -127,6 +151,9 @@ impl LevelState {
     pub fn load_scratch_level(&mut self, index: usize, initially_selected_item: Option<usize>) {
         let level = &crate::level::scratch::levels::LEVELS[index];
         let mut tiles = Vec::new();
+
+        self.shooters.clear();
+        self.shooter_bullets.clear();
         self.tile_state.size = Vec2::new(StoredScratchLevel::WIDTH, StoredScratchLevel::HEIGHT);
         for y in 0..StoredScratchLevel::HEIGHT {
             for x in 0..StoredScratchLevel::WIDTH {
@@ -134,6 +161,12 @@ impl LevelState {
                 let i = y * self.tile_state.size.x + x;
                 if let Some(tile) = level.tiles[i].to_tile_state(i) {
                     set_tile = tile
+                }
+                if let Tile::Shooter(d) = &set_tile {
+                    self.shooters.push(ShooterState::new(
+                        Vec2f::new(x as f32 + 0.5, y as f32 + 0.5),
+                        *d,
+                    ));
                 }
                 tiles.push(set_tile);
             }
@@ -151,7 +184,14 @@ impl LevelState {
             .collect();
         self.items = level.items.to_vec();
         self.finish_instant = None;
-        self.selected_item = initially_selected_item;
+        self.selected_item = if let Some(i) = initially_selected_item
+            && i >= self.items.len()
+        {
+            // To avoid going out of bounds, reset the selected item index.
+            None
+        } else {
+            initially_selected_item
+        };
         self.collectibles = level
             .collectibles
             .iter()
@@ -166,6 +206,25 @@ impl LevelState {
     pub fn tick(&mut self, delta: f32) -> LevelStateOutcome {
         // Tick the tile state.
         self.tile_state.tick(delta);
+
+        // Tick shooter bullets.
+        if self
+            .shooter_bullets
+            .iter()
+            .any(|bullet| bullet.is_touching(self.player.pos, Entity::RADIUS))
+        {
+            return LevelStateOutcome::Lose;
+        }
+
+        self.shooter_bullets
+            .retain_mut(|bullet| bullet.tick(delta, &self.tile_state));
+
+        // Check for shooters.
+        for shooter in &mut self.shooters {
+            if let Some(bullet) = shooter.tick(delta, self.player.pos) {
+                self.shooter_bullets.push(bullet);
+            }
+        }
 
         // Check for any collected collectibles.
         for collectible in self.player.check_collectibles(&mut self.collectibles) {
@@ -272,5 +331,115 @@ impl LevelState {
 
     pub fn selected_item(&mut self) -> Option<&mut ItemStack> {
         self.selected_item.map(|i| &mut self.items[i])
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ShooterState {
+    pub pos: Vec2f,
+    pub cooldown: f32,
+    pub direction: Direction,
+    last_shot: Option<Instant>,
+}
+
+impl ShooterState {
+    pub const COOLDOWN: f32 = 1.25;
+    pub const ACTIVATION_RANGE: f32 = 0.35;
+
+    pub const GLOW_SIZE: f32 = 0.9;
+
+    pub fn new(pos: Vec2f, direction: Direction) -> Self {
+        Self {
+            pos,
+            direction,
+            cooldown: 0.0,
+            last_shot: None,
+        }
+    }
+
+    /// Ticks this shooter, returning the shot bullet if any.
+    pub fn tick(&mut self, delta: f32, player_pos: Vec2f) -> Option<ShooterBullet> {
+        self.cooldown = (self.cooldown - delta).max(0.0);
+        let should_shoot = {
+            if self.cooldown < f32::EPSILON {
+                // Check whether the player is in range.
+                match self.direction.bidirection() {
+                    Bidirection::Horizontal => {
+                        (self.pos.y - player_pos.y).abs() <= Self::ACTIVATION_RANGE
+                    }
+                    Bidirection::Vertical => {
+                        (self.pos.x - player_pos.x).abs() <= Self::ACTIVATION_RANGE
+                    }
+                }
+            } else {
+                false
+            }
+        };
+
+        if should_shoot {
+            self.cooldown = Self::COOLDOWN;
+            self.last_shot = Some(Instant::now())
+        }
+
+        should_shoot.then(|| ShooterBullet::new(self))
+    }
+
+    pub fn glow(&self) -> Option<f32> {
+        self.last_shot.and_then(|i| {
+            let elapsed = i.elapsed().as_secs_f32();
+            if elapsed > ShooterBullet::IMMUNE_TIME {
+                None
+            } else {
+                Some(1.0 - elapsed / ShooterBullet::IMMUNE_TIME)
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ShooterBullet {
+    pub pos: Vec2f,
+    pub direction: Direction,
+    instant: Instant,
+}
+
+impl ShooterBullet {
+    pub const SPEED: f32 = 5.0;
+
+    pub const HIT_RADIUS: f32 = 0.2;
+    pub const SIZE: f32 = 2.0 * Self::HIT_RADIUS;
+
+    pub const IMMUNE_TIME: f32 = (0.6 / Self::SPEED) + 0.04;
+
+    pub fn new(shooter: &ShooterState) -> Self {
+        Self {
+            pos: shooter.pos,
+            direction: shooter.direction,
+            instant: Instant::now(),
+        }
+    }
+
+    pub fn hitbox(&self) -> Rectf {
+        Rectf::from_center(self.pos, Vec2f::new(Self::SIZE, Self::SIZE))
+    }
+
+    pub fn is_immune_to_tiles(&self) -> bool {
+        self.instant.elapsed() < Duration::from_secs_f32(Self::IMMUNE_TIME)
+    }
+
+    /// Ticks this bullet, returning whether it should survive.
+    pub fn tick(&mut self, delta: f32, tile_state: &TileState) -> bool {
+        if !self.is_immune_to_tiles() && tile_state.is_colliding_with_hitbox(self.hitbox()) {
+            return false;
+        }
+
+        self.pos += self.direction.unit_vec2f() * Self::SPEED * delta;
+
+        true
+    }
+
+    pub fn is_touching(&self, pos: Vec2f, entity_radius: f32) -> bool {
+        let max_distance = entity_radius + Self::HIT_RADIUS;
+        self.pos.distance_sqr(pos) < (max_distance * max_distance)
     }
 }

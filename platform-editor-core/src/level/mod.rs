@@ -69,7 +69,7 @@ pub enum Tile {
 }
 
 impl Tile {
-    pub const SLAB_THICKNESS: f32 = 0.35;
+    pub const SLAB_THICKNESS: f32 = 0.55;
     pub const SPIKE_SLAB_THICKNESS: f32 = 0.3;
 
     pub const SPIKE_KILL_HITBOX_DIMENSIONS: Vec2f = Vec2f::new(0.2, 0.4);
@@ -114,12 +114,27 @@ impl Tile {
         }
     }
 
+    /// Returns the [`Rectf`] used to draw the texture of this tile, if any.
+    pub fn rendering_rect(&self, top_left: Vec2f) -> Option<Rectf> {
+        match self {
+            Self::Spike(_) => Some(Rectf::new(top_left, Vec2f::new(1.0, 1.0))),
+            _ => self.hitbox(top_left),
+        }
+    }
+
     fn spike_half_hitbox(pos: Vec2<usize>, x_center: f32, direction: Direction) -> Rectf {
         match direction {
             Direction::Up => Rectf::new(
                 Vec2f::new(
                     x_center - (Self::SPIKE_KILL_HITBOX_DIMENSIONS.x / 2.0),
                     1.0 - Self::SPIKE_KILL_HITBOX_DIMENSIONS.y - Self::SPIKE_SLAB_THICKNESS,
+                ) + pos.map(|t| t as f32),
+                Self::SPIKE_KILL_HITBOX_DIMENSIONS,
+            ),
+            Direction::Down => Rectf::new(
+                Vec2f::new(
+                    x_center - (Self::SPIKE_KILL_HITBOX_DIMENSIONS.x / 2.0),
+                    Self::SPIKE_KILL_HITBOX_DIMENSIONS.y + Self::SPIKE_SLAB_THICKNESS,
                 ) + pos.map(|t| t as f32),
                 Self::SPIKE_KILL_HITBOX_DIMENSIONS,
             ),

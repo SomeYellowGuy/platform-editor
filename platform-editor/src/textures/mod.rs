@@ -125,6 +125,9 @@ pub struct LevelTextures<'c> {
     pub bottom_bar: BottomBarTextures<'c>,
     pub end_dialog: EndDialogTextures<'c>,
     pub items_text: DynamicText<'c>,
+
+    pub bullet: Texture<'c>,
+    pub bullet_glow: Texture<'c>,
 }
 
 impl<'c> LevelTextures<'c> {
@@ -148,6 +151,9 @@ impl<'c> LevelTextures<'c> {
             bottom_bar: BottomBarTextures::load(creator)?,
             end_dialog: EndDialogTextures::load(creator)?,
             items_text: DynamicText::new(creator),
+
+            bullet: load_texture(creator, "assets/gfx/level/bullet.png")?,
+            bullet_glow: load_texture(creator, "assets/gfx/level/bullet_glow.png")?,
         })
     }
 

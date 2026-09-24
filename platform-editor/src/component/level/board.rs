@@ -1,5 +1,5 @@
 use platform_editor_core::{
-    common_util::{Vec2, Vec2f},
+    common_util::{Rectf, Vec2, Vec2f},
     component::{
         ComponentId, Event, QueuedComponent,
         level::{
@@ -10,7 +10,10 @@ use platform_editor_core::{
     },
     level::{
         Tile,
-        state::{CollectibleState, LevelState, LevelStateOutcome, entity::Entity},
+        state::{
+            CollectibleState, LevelState, LevelStateOutcome, ShooterBullet, ShooterState,
+            entity::Entity,
+        },
     },
     screen::Screen,
 };
@@ -45,6 +48,19 @@ pub const ITEM_PREVIEW_ALPHA: u8 = (u8::MAX as f32 * 0.6) as u8;
 fn pos_to_screen(state: &LevelState, pos: Vec2f, offset: f32) -> Vec2f {
     LEVEL_CENTER + pos * TILE_SIZE + Vec2f::new(0.0, offset)
         - state.tile_state.size.map(|u| u as f32) / 2.0 * TILE_SIZE
+}
+
+/// Converts a [`Rectf`] in *level space* to an [`FRect`] on the actual screen.
+///
+/// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
+fn rectf_to_screen(state: &LevelState, rect: Rectf, offset: f32) -> FRect {
+    let pos = pos_to_screen(state, rect.pos, offset);
+    FRect::new(
+        pos.x,
+        pos.y,
+        rect.dimensions.x * TILE_SIZE,
+        rect.dimensions.y * TILE_SIZE,
+    )
 }
 
 /// Converts a position in the actual screen of the game to a [`Vec2f`] on the actual screen.
@@ -129,6 +145,7 @@ impl Render for BoardBase {
             height as f32 * TILE_SIZE + 20.0,
         ))?;
 
+        // Draw the empty board.
         for y in 0..height {
             for x in 0..width {
                 // Draw the white tile texture.
@@ -153,11 +170,38 @@ impl Render for BoardBase {
                         rect,
                     )?;
                 }
+            }
+        }
 
+        // Draw the bullets.
+        for bullet in &state.shooter_bullets {
+            let size = ShooterBullet::SIZE * TILE_SIZE;
+            copy(
+                data.canvas,
+                alpha,
+                &mut data.textures.level.bullet,
+                None,
+                FRect::from_center(
+                    pos_to_screen(state, bullet.pos, offset).into_fpoint(),
+                    size,
+                    size,
+                ),
+            )?
+        }
+
+        // Draw the actual tiles.
+        for y in 0..height {
+            for x in 0..width {
                 let tile = state.tile_state.tile(x, y);
-                // Draw the tile.
-                if let Some(texture) = data.textures.level.tiles.texture_from_tile_mut(tile) {
-                    copy(data.canvas, alpha, texture, None, rect)?;
+
+                let rendering_rect = tile.rendering_rect(Vec2f::new(x as f32, y as f32));
+                if let Some(rect) = rendering_rect {
+                    let rect = rectf_to_screen(state, rect, offset);
+
+                    // Draw the tile.
+                    if let Some(texture) = data.textures.level.tiles.texture_from_tile_mut(tile) {
+                        copy(data.canvas, alpha, texture, None, rect)?;
+                    }
                 }
             }
         }
@@ -267,49 +311,63 @@ impl Render for BoardBase {
             }
         }
 
-        if VISUALIZE_TILE_HITBOXES {
-            for y in 0..height {
-                for x in 0..width {
-                    let tile = state.tile_state.tile(x, y);
-                    let tile_pos = Vec2::new(x, y);
-                    if let Some(rect) = tile.hitbox(Vec2::new(x as f32, y as f32)) {
-                        // Normal hitboxes are colored blue.
-                        let pos = pos_to_screen(state, rect.pos, offset);
-                        data.canvas.set_draw_color(Color::BLUE);
-                        data.canvas.draw_rect(FRect::new(
-                            pos.x,
-                            pos.y,
-                            rect.dimensions.x * TILE_SIZE,
-                            rect.dimensions.y * TILE_SIZE,
-                        ))?;
-                    }
-                    if let Tile::Spike(d) = tile {
-                        // Deadly hitboxes are colored red.
-                        data.canvas.set_draw_color(Color::RED);
-                        let rects = Tile::spike_hitboxes(tile_pos, *d);
-                        let pos = [
-                            pos_to_screen(state, rects[0].pos, offset),
-                            pos_to_screen(state, rects[1].pos, offset),
-                        ];
-                        data.canvas.draw_rect(FRect::new(
-                            pos[0].x,
-                            pos[0].y,
-                            rects[0].dimensions.x * TILE_SIZE,
-                            rects[0].dimensions.y * TILE_SIZE,
-                        ))?;
-                        data.canvas.draw_rect(FRect::new(
-                            pos[1].x,
-                            pos[1].y,
-                            rects[1].dimensions.x * TILE_SIZE,
-                            rects[1].dimensions.y * TILE_SIZE,
-                        ))?;
-                    }
-                }
+        // Draw any bullet glows.
+        for shooter in &state.shooters {
+            if let Some(glow_alpha) = shooter.glow() {
+                let size_multiplier = TILE_SIZE * (0.5 + 1.0 - glow_alpha);
+                copy(
+                    data.canvas,
+                    (alpha as f32 * glow_alpha) as u8,
+                    &mut data.textures.level.bullet_glow,
+                    None,
+                    FRect::from_center(
+                        (pos_to_screen(state, shooter.pos, offset) - Vec2f::new(2.0, 2.0))
+                            .into_fpoint(),
+                        ShooterState::GLOW_SIZE * size_multiplier,
+                        ShooterState::GLOW_SIZE * size_multiplier,
+                    ),
+                )?
             }
+        }
+
+        if VISUALIZE_TILE_HITBOXES {
+            visualize_tile_hitboxes(data, width, height, offset)?;
         }
 
         Ok(())
     }
+}
+
+pub fn visualize_tile_hitboxes(
+    data: &mut RenderData,
+    width: usize,
+    height: usize,
+    offset: f32,
+) -> DrawResult {
+    let state = RenderData::level_state(data.extracted_data)?;
+
+    for y in 0..height {
+        for x in 0..width {
+            let tile = state.tile_state.tile(x, y);
+            let tile_pos = Vec2::new(x, y);
+            if let Some(rect) = tile.hitbox(Vec2::new(x as f32, y as f32)) {
+                // Normal hitboxes are colored blue.
+                data.canvas
+                    .draw_rect(rectf_to_screen(state, rect, offset))?;
+            }
+            if let Tile::Spike(d) = tile {
+                // Deadly hitboxes are colored red.
+                data.canvas.set_draw_color(Color::RED);
+                let rects = Tile::spike_hitboxes(tile_pos, *d);
+                data.canvas
+                    .draw_rect(rectf_to_screen(state, rects[0], offset))?;
+                data.canvas
+                    .draw_rect(rectf_to_screen(state, rects[0], offset))?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 impl Logic for BoardBase {

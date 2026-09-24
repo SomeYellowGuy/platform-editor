@@ -119,24 +119,7 @@ impl Entity {
     }
 
     pub fn is_colliding_with_tiles(&self, tiles: &TileState) -> bool {
-        let hitbox = self.hitbox();
-
-        if !Rectf::new(Vec2f::new(0.0, 0.0), tiles.size.map(|u| u as f32)).contains_rect(hitbox) {
-            return true;
-        }
-
-        for y in 0..tiles.size.y {
-            for x in 0..tiles.size.x {
-                let tile = tiles.tile(x, y);
-                let tile_hitbox = tile.hitbox(Vec2f::new(x as f32, y as f32));
-                if let Some(tile_hitbox) = tile_hitbox
-                    && tile_hitbox.intersects(hitbox)
-                {
-                    return true;
-                }
-            }
-        }
-        false
+        tiles.is_colliding_with_hitbox(self.hitbox())
     }
 
     pub fn is_touching_deadly_area(&self, tiles: &TileState) -> bool {
