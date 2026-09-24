@@ -309,6 +309,15 @@ impl Direction {
             Self::Left | Self::Right => Bidirection::Horizontal,
         }
     }
+
+    pub const fn opposite(self) -> Self {
+        match self {
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

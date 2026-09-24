@@ -9,7 +9,10 @@ use sdl3::{
     render::{FPoint, FRect},
 };
 
-use crate::{logic::Logic, render::Render, util::FRectExt};
+use crate::{
+    HEIGHT, component::level_select::header::HEADER_HEIGHT, logic::Logic, render::Render,
+    util::FRectExt,
+};
 
 pub const SPACING: f32 = 220.0;
 pub const SIDE: f32 = 190.0;
@@ -118,7 +121,10 @@ impl Logic for LevelSelectButtonBase {
             SIDE,
             SIDE,
         );
-        let hovered = hitbox.contains_point(data.mouse_pos());
+        let mouse_pos = data.mouse_pos();
+        let hovered = (HEADER_HEIGHT as f32..(HEIGHT as f32 - HEADER_HEIGHT as f32))
+            .contains(&mouse_pos.y)
+            && hitbox.contains_point(mouse_pos);
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             // Play the level.

@@ -8,7 +8,10 @@ use platform_editor_core::{
             end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType},
         },
     },
-    level::state::{CollectibleState, LevelState, LevelStateOutcome, entity::Entity},
+    level::{
+        Tile,
+        state::{CollectibleState, LevelState, LevelStateOutcome, entity::Entity},
+    },
     screen::Screen,
 };
 use sdl3::{
@@ -26,6 +29,9 @@ use crate::{
     render::{DrawResult, Render, RenderData},
     util::{FRectExt, IntoFPoint},
 };
+
+/// Whether to visualize the collision and deadly hitboxes of tiles.
+pub const VISUALIZE_TILE_HITBOXES: bool = false;
 
 pub const TILE_SIZE: f32 = 60.0;
 pub const COLLECTIBLE_SIZE: f32 = 50.0;
@@ -258,6 +264,47 @@ impl Render for BoardBase {
                     ),
                     10.0 * angle_sine,
                 )?;
+            }
+        }
+
+        if VISUALIZE_TILE_HITBOXES {
+            for y in 0..height {
+                for x in 0..width {
+                    let tile = state.tile_state.tile(x, y);
+                    let tile_pos = Vec2::new(x, y);
+                    if let Some(rect) = tile.hitbox(Vec2::new(x as f32, y as f32)) {
+                        // Normal hitboxes are colored blue.
+                        let pos = pos_to_screen(state, rect.pos, offset);
+                        data.canvas.set_draw_color(Color::BLUE);
+                        data.canvas.draw_rect(FRect::new(
+                            pos.x,
+                            pos.y,
+                            rect.dimensions.x * TILE_SIZE,
+                            rect.dimensions.y * TILE_SIZE,
+                        ))?;
+                    }
+                    if let Tile::Spike(d) = tile {
+                        // Deadly hitboxes are colored red.
+                        data.canvas.set_draw_color(Color::RED);
+                        let rects = Tile::spike_hitboxes(tile_pos, *d);
+                        let pos = [
+                            pos_to_screen(state, rects[0].pos, offset),
+                            pos_to_screen(state, rects[1].pos, offset),
+                        ];
+                        data.canvas.draw_rect(FRect::new(
+                            pos[0].x,
+                            pos[0].y,
+                            rects[0].dimensions.x * TILE_SIZE,
+                            rects[0].dimensions.y * TILE_SIZE,
+                        ))?;
+                        data.canvas.draw_rect(FRect::new(
+                            pos[1].x,
+                            pos[1].y,
+                            rects[1].dimensions.x * TILE_SIZE,
+                            rects[1].dimensions.y * TILE_SIZE,
+                        ))?;
+                    }
+                }
             }
         }
 

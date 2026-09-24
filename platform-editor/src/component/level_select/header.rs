@@ -7,12 +7,13 @@ use sdl3::{
 
 use crate::{HEIGHT, WIDTH, logic::Logic, render::Render, textures::TextAlignment};
 
+pub const HEADER_HEIGHT: u32 = 90;
+
 impl Render for LevelSelectHeaderBase {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
         let t = (data.transition_offset(1.2) - 10.0).max(0.0);
         let header_offset = ((t * t) / 1.4) as i32;
 
-        const HEADER_HEIGHT: u32 = 90;
         data.canvas.set_blend_mode(sdl3::render::BlendMode::Blend);
 
         data.canvas.set_draw_color(Color::RGBA(10, 10, 10, 230));

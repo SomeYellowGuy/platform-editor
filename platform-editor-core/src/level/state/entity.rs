@@ -1,9 +1,6 @@
 use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
-    level::{
-        Tile,
-        state::{CollectibleState, TileState},
-    },
+    level::state::{CollectibleState, TileState},
 };
 
 /// The acceleration due to gravity.
@@ -63,8 +60,8 @@ impl Entity {
             .get_mut(self.gravity_direction.bidirection().other());
         *non_gravity_component *= 0.85_f32.powf(delta * 30.0);
 
-        // Check if the entity is too close to the void.
-        let alive = !self.is_touching_void(tiles);
+        // Check if the entity is too close to the void, or is touching something deadly.
+        let alive = !self.is_touching_void(tiles) && !self.is_touching_deadly_area(tiles);
 
         // Move the entity.
         self.move_in_steps(tiles);
@@ -130,11 +127,25 @@ impl Entity {
 
         for y in 0..tiles.size.y {
             for x in 0..tiles.size.x {
-                if *tiles.tile(x, y) == Tile::Empty {
-                    continue;
+                let tile = tiles.tile(x, y);
+                let tile_hitbox = tile.hitbox(Vec2f::new(x as f32, y as f32));
+                if let Some(tile_hitbox) = tile_hitbox
+                    && tile_hitbox.intersects(hitbox)
+                {
+                    return true;
                 }
-                let tile_hitbox = Rectf::from_xy_and_dimensions(x as f32, y as f32, 1.0, 1.0);
-                if tile_hitbox.intersects(hitbox) {
+            }
+        }
+        false
+    }
+
+    pub fn is_touching_deadly_area(&self, tiles: &TileState) -> bool {
+        let hitbox = self.hitbox();
+
+        for y in 0..tiles.size.y {
+            for x in 0..tiles.size.x {
+                let tile = tiles.tile(x, y);
+                if tile.is_deadly_for_hitbox(Vec2::new(x, y), hitbox) {
                     return true;
                 }
             }
