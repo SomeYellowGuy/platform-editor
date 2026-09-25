@@ -64,23 +64,25 @@ pub enum Tile {
     PlacedBlock,
     PlacedTimedBlock(f32),
 
-    Shooter(Direction),
+    Shooter {
+        direction: Direction,
+        speed_multiplier: f32,
+    },
     Spike(Direction),
 }
 
 impl Tile {
     pub const SLAB_THICKNESS: f32 = 0.55;
-    pub const SPIKE_SLAB_THICKNESS: f32 = 0.3;
+    pub const SPIKE_SLAB_THICKNESS: f32 = 0.25;
 
     pub const SPIKE_KILL_HITBOX_DIMENSIONS: Vec2f = Vec2f::new(0.2, 0.4);
 
     fn slab_hitbox(top_left: Vec2f, direction: Direction, thickness: f32) -> Rectf {
         match direction {
             Direction::Up => Rectf::new(top_left, Vec2f::new(1.0, thickness)),
-            Direction::Down => Rectf::new(
-                top_left + Vec2f::new(0.0, 1.0 - thickness),
-                Vec2f::new(1.0, thickness),
-            ),
+            Direction::Down => {
+                Rectf::new(top_left.add_y(1.0 - thickness), Vec2f::new(1.0, thickness))
+            }
             Direction::Left => Rectf::new(top_left, Vec2f::new(thickness, 1.0)),
             Direction::Right => Rectf::new(
                 top_left + Vec2f::new(1.0 - thickness, 1.0),
@@ -128,14 +130,14 @@ impl Tile {
                 Vec2f::new(
                     x_center - (Self::SPIKE_KILL_HITBOX_DIMENSIONS.x / 2.0),
                     1.0 - Self::SPIKE_KILL_HITBOX_DIMENSIONS.y - Self::SPIKE_SLAB_THICKNESS,
-                ) + pos.map(|t| t as f32),
+                ) + pos.to_vec2f(),
                 Self::SPIKE_KILL_HITBOX_DIMENSIONS,
             ),
             Direction::Down => Rectf::new(
                 Vec2f::new(
                     x_center - (Self::SPIKE_KILL_HITBOX_DIMENSIONS.x / 2.0),
                     Self::SPIKE_KILL_HITBOX_DIMENSIONS.y + Self::SPIKE_SLAB_THICKNESS,
-                ) + pos.map(|t| t as f32),
+                ) + pos.to_vec2f(),
                 Self::SPIKE_KILL_HITBOX_DIMENSIONS,
             ),
             _ => todo!(),
@@ -202,7 +204,7 @@ pub enum MovingBlockItem {
 }
 
 impl MovingBlockItem {
-    pub fn icon_texture<'a, T>(&self, textures: &'a TileTextures<T>) -> Option<&'a T> {
+    pub fn texture<'a, T>(&self, textures: &'a TileTextures<T>) -> Option<&'a T> {
         match self {
             Self::Single(d) => textures.placed_blocks.moving.single.get(*d),
             Self::Horizontal => Some(&textures.placed_blocks.moving.horizontal),
@@ -210,7 +212,7 @@ impl MovingBlockItem {
         }
     }
 
-    pub fn icon_texture_mut<'a, T>(&self, textures: &'a mut TileTextures<T>) -> Option<&'a mut T> {
+    pub fn texture_mut<'a, T>(&self, textures: &'a mut TileTextures<T>) -> Option<&'a mut T> {
         match self {
             Self::Single(d) => textures.placed_blocks.moving.single.get_mut(*d),
             Self::Horizontal => Some(&mut textures.placed_blocks.moving.horizontal),
@@ -234,7 +236,7 @@ impl Item {
         match self {
             Self::Block => Some(&textures.placed_blocks.permanent),
             Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture(*t as usize)),
-            Self::Moving(moving_block_item) => moving_block_item.icon_texture(textures),
+            Self::Moving(moving_block_item) => moving_block_item.texture(textures),
             // TODO
             Self::GravityOrb => None,
             Self::Star => None,
@@ -245,7 +247,7 @@ impl Item {
         match self {
             Self::Block => Some(&mut textures.placed_blocks.permanent),
             Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture_mut(*t as usize)),
-            Self::Moving(moving_block_item) => moving_block_item.icon_texture_mut(textures),
+            Self::Moving(moving_block_item) => moving_block_item.texture_mut(textures),
             // TODO
             Self::GravityOrb => None,
             Self::Star => None,
@@ -295,6 +297,15 @@ pub enum CollectibleType {
     Star(usize),
     GravityOrb,
     Key(LockColor),
+}
+
+impl CollectibleType {
+    pub fn collectible_rect_scale(self) -> Vec2f {
+        match self {
+            CollectibleType::Key(_) => Vec2f::new(0.8, 1.2),
+            _ => Vec2f::new(1.0, 1.0),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

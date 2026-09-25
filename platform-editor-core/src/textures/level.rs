@@ -1,6 +1,6 @@
 use crate::{
     common_util::Direction,
-    level::{CollectibleType, Tile},
+    level::{CollectibleType, LockColor, Tile},
 };
 
 /// A structure that may or may not hold a texture or image for each direction.
@@ -101,7 +101,7 @@ impl<T> TileTextures<T> {
             Tile::Dirt(i) => Some(&self.dirt[*i]),
             Tile::PlacedBlock => Some(&self.placed_blocks.permanent),
             Tile::PlacedTimedBlock(t) => self.placed_blocks.runtime_timed_texture(*t),
-            Tile::Shooter(direction) => self.shooters.get(*direction),
+            Tile::Shooter { direction, .. } => self.shooters.get(*direction),
             Tile::Spike(direction) => self.spikes.get(*direction),
         }
     }
@@ -116,7 +116,7 @@ impl<T> TileTextures<T> {
             Tile::Dirt(i) => Some(&mut self.dirt[*i]),
             Tile::PlacedBlock => Some(&mut self.placed_blocks.permanent),
             Tile::PlacedTimedBlock(t) => self.placed_blocks.runtime_timed_texture_mut(*t),
-            Tile::Shooter(direction) => self.shooters.get_mut(*direction),
+            Tile::Shooter { direction, .. } => self.shooters.get_mut(*direction),
             Tile::Spike(direction) => self.spikes.get_mut(*direction),
         }
     }
@@ -125,6 +125,7 @@ impl<T> TileTextures<T> {
 pub struct CollectibleTextures<T> {
     pub star: T,
     pub gravity_orb: T,
+    pub keys: KeyTextures<T>,
 }
 
 impl<T> CollectibleTextures<T> {
@@ -140,7 +141,37 @@ impl<T> CollectibleTextures<T> {
         match collectible {
             CollectibleType::Star(_) => Some(&mut self.star),
             CollectibleType::GravityOrb => Some(&mut self.gravity_orb),
-            _ => None,
+            CollectibleType::Key(color) => Some(self.keys.get_mut(color)),
+        }
+    }
+}
+
+pub struct KeyTextures<T> {
+    pub red: T,
+    pub orange: T,
+    pub yellow: T,
+    pub green: T,
+    pub blue: T,
+}
+
+impl<T> KeyTextures<T> {
+    pub fn get(&self, color: LockColor) -> &T {
+        match color {
+            LockColor::Red => &self.red,
+            LockColor::Orange => &self.orange,
+            LockColor::Yellow => &self.yellow,
+            LockColor::Green => &self.green,
+            LockColor::Blue => &self.blue,
+        }
+    }
+
+    pub fn get_mut(&mut self, color: LockColor) -> &mut T {
+        match color {
+            LockColor::Red => &mut self.red,
+            LockColor::Orange => &mut self.orange,
+            LockColor::Yellow => &mut self.yellow,
+            LockColor::Green => &mut self.green,
+            LockColor::Blue => &mut self.blue,
         }
     }
 }

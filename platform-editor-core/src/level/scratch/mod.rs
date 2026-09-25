@@ -5,11 +5,19 @@ use crate::{
 
 pub mod levels;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShooterDirection {
     Left,
     Right,
     Up,
+}
+
+impl ShooterDirection {
+    pub fn speed_multiplier(self) -> f32 {
+        // In the Scratch game, shooters facing up have
+        // bullets moving twice as fast as a normal bullet.
+        if self == Self::Up { 2.0 } else { 1.0 }
+    }
 }
 
 impl From<ShooterDirection> for Direction {
@@ -121,7 +129,10 @@ impl StoredScratchTile {
                 let seed = Self::tile_seed(index + 1);
                 Some(Tile::Dirt(if seed < 5 { seed } else { 0 }))
             }
-            Self::Shooter(shooter_direction) => Some(Tile::Shooter((*shooter_direction).into())),
+            Self::Shooter(shooter_direction) => Some(Tile::Shooter {
+                direction: (*shooter_direction).into(),
+                speed_multiplier: shooter_direction.speed_multiplier(),
+            }),
             Self::Spike(spike_direction) => Some(Tile::Spike((*spike_direction).into())),
             Self::Lock(_, _) => None,
         }

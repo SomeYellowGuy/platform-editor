@@ -43,7 +43,7 @@ impl Render for BottomBarBase {
             &data.textures.level.bottom_bar.base,
             None,
             FRect::from_center(
-                (TEXTURE_CENTER + Vec2f::new(0.0, offset)).into_fpoint(),
+                TEXTURE_CENTER.add_y(offset).into_fpoint(),
                 TEXTURE_SIZE.0,
                 TEXTURE_SIZE.1,
             ),
@@ -134,11 +134,7 @@ impl Render for BottomBarButtonBase {
         };
 
         let size = BUTTON_BASE_SIZE * self.scale_multiplier();
-        let rect = FRect::from_center(
-            (button_pos(self.ty) + Vec2f::new(0.0, offset)).into_fpoint(),
-            size,
-            size,
-        );
+        let rect = FRect::from_center(button_pos(self.ty).add_y(offset).into_fpoint(), size, size);
 
         texture.set_blend_mode(BlendMode::Blend);
         texture.set_alpha_mod((255.0 * (1.0 - alpha_offset)) as u8);

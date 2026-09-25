@@ -4,7 +4,8 @@ use crate::{
         Item, ItemStack, MovingBlockItem,
         scratch::{
             ScratchCollectible as Collectible, ScratchCollectibleType as CollectibleType,
-            ScratchStarCondition as StarCondition, StoredScratchLevel as Level,
+            ScratchLockColor as LockColor, ScratchStarCondition as StarCondition,
+            StoredScratchLevel as Level,
         },
     },
 };
@@ -58,7 +59,7 @@ pub const LEVELS: &[Level] = &[
         .stars(StarCondition::Items(5), StarCondition::Time(22))
         .build(),
     // Level 7
-    Level::builder(br"000GGG9GGG000000000000000000000000000000000000000000000000000000000000000000000008800088000222GG222GG222")
+    Level::builder(br"000GGG9GGG00000000000000000000000000000000000000000000000000000000000000000000000885E08850022GGGG1GGGG22")
         .start_pos(Vec2::new(1.0, 5.9))
         .flag_pos(Vec2::new(12.0, 6.5))
         .items(&[ItemStack::new(Item::Moving(MovingBlockItem::Single(Direction::Up)), 2)])
@@ -84,5 +85,20 @@ pub const LEVELS: &[Level] = &[
             ItemStack::new(Item::TimedBlock(1), 5)
         ])
         .stars(StarCondition::Items(3), StarCondition::Time(10))
+        .build(),
+    // Level 10
+    Level::builder(br"000000000000000000000000000000000000222000000000233300000000033330000000003300000000000AB002222222222222")
+        .start_pos(Vec2::new(1.5, 4.5))
+        .flag_pos(Vec2::new(12.0, 6.5))
+        .items(&[
+            ItemStack::new(Item::TimedBlock(2), 1),
+            ItemStack::new(Item::TimedBlock(4), 3)
+        ])
+        .stars(StarCondition::Collect, StarCondition::Time(16))
+        .collectibles(&[
+            Collectible::key(Vec2f::new(2.5, 2.0), LockColor::Orange),
+            Collectible::key(Vec2f::new(6.5, 1.5), LockColor::Red),
+            Collectible::new(Vec2f::new(11.5, 1.0), CollectibleType::Star)
+        ])
         .build()
 ];

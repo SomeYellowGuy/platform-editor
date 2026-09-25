@@ -1,3 +1,4 @@
+use platform_editor_core::textures::level::KeyTextures;
 use sdl3::{
     image::LoadTexture,
     render::{Texture, TextureCreator},
@@ -146,6 +147,13 @@ impl<'c> LevelTextures<'c> {
                     creator,
                     "assets/gfx/level/collectibles/gravity_orb.png",
                 )?,
+                keys: KeyTextures {
+                    red: load_texture(creator, "assets/gfx/level/keys/red.png")?,
+                    orange: load_texture(creator, "assets/gfx/level/keys/orange.png")?,
+                    yellow: load_texture(creator, "assets/gfx/level/keys/yellow.png")?,
+                    green: load_texture(creator, "assets/gfx/level/keys/green.png")?,
+                    blue: load_texture(creator, "assets/gfx/level/keys/blue.png")?,
+                },
             },
             item_box: load_texture(creator, "assets/gfx/level/item_box.png")?,
             bottom_bar: BottomBarTextures::load(creator)?,

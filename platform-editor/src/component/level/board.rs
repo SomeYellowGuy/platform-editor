@@ -11,8 +11,7 @@ use platform_editor_core::{
     level::{
         Tile,
         state::{
-            CollectibleState, LevelState, LevelStateOutcome, ShooterBullet, ShooterState,
-            entity::Entity,
+            CollectibleState, Entity, LevelState, LevelStateOutcome, ShooterBullet, ShooterState,
         },
     },
     screen::Screen,
@@ -37,7 +36,7 @@ use crate::{
 pub const VISUALIZE_TILE_HITBOXES: bool = false;
 
 pub const TILE_SIZE: f32 = 60.0;
-pub const COLLECTIBLE_SIZE: f32 = 50.0;
+pub const COLLECTIBLE_SIZE: f32 = 55.0;
 pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 28.0);
 
 pub const ITEM_PREVIEW_ALPHA: u8 = (u8::MAX as f32 * 0.6) as u8;
@@ -47,7 +46,7 @@ pub const ITEM_PREVIEW_ALPHA: u8 = (u8::MAX as f32 * 0.6) as u8;
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
 fn pos_to_screen(state: &LevelState, pos: Vec2f, offset: f32) -> Vec2f {
     LEVEL_CENTER + pos * TILE_SIZE + Vec2f::new(0.0, offset)
-        - state.tile_state.size.map(|u| u as f32) / 2.0 * TILE_SIZE
+        - state.tile_state.size.to_vec2f() / 2.0 * TILE_SIZE
 }
 
 /// Converts a [`Rectf`] in *level space* to an [`FRect`] on the actual screen.
@@ -68,7 +67,7 @@ fn rectf_to_screen(state: &LevelState, rect: Rectf, offset: f32) -> FRect {
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
 fn screen_to_pos(state: &LevelState, screen_pos: Vec2f, offset: f32) -> Vec2f {
     (screen_pos - LEVEL_CENTER - Vec2f::new(0.0, offset)
-        + state.tile_state.size.map(|u| u as f32) / 2.0 * TILE_SIZE)
+        + state.tile_state.size.to_vec2f() / 2.0 * TILE_SIZE)
         / TILE_SIZE
 }
 
@@ -134,7 +133,7 @@ impl Render for BoardBase {
         let width = state.tile_state.size.x;
         let height = state.tile_state.size.y;
 
-        let level_center = LEVEL_CENTER + Vec2f::new(0.0, offset);
+        let level_center = LEVEL_CENTER.add_y(offset);
 
         data.canvas.set_blend_mode(BlendMode::Blend);
         data.canvas
@@ -206,6 +205,23 @@ impl Render for BoardBase {
             }
         }
 
+        // Draw the moving platforms.
+        for moving in &state.moving {
+            if let Some(texture) = moving.ty.texture_mut(&mut data.textures.level.tiles) {
+                copy(
+                    data.canvas,
+                    alpha,
+                    texture,
+                    None,
+                    FRect::from_center(
+                        pos_to_screen(state, moving.pos, offset).into_fpoint(),
+                        TILE_SIZE,
+                        TILE_SIZE,
+                    ),
+                )?;
+            }
+        }
+
         // Draw the player.
         let player_center = pos_to_screen(state, state.player.pos, offset).into_fpoint();
         copy(
@@ -226,11 +242,11 @@ impl Render for BoardBase {
             const FLAG_HIT_ANIMATION_DURATION: f32 = 0.6;
             // 1 - start, 0 - end
             let t: f32 = 1.0 - instant.elapsed().as_secs_f32() / FLAG_HIT_ANIMATION_DURATION;
-            let hit_scale_multplier = if t > 0.0 { 1.0 + (t * t) * 0.3 } else { 1.0 };
+            let hit_scale_multiplier = if t > 0.0 { 1.0 + (t * t) * 0.3 } else { 1.0 };
             (
                 &mut data.textures.level.hit_flag,
-                hit_scale_multplier * 1.4,
-                hit_scale_multplier * 1.6,
+                hit_scale_multiplier * 1.4,
+                hit_scale_multiplier * 1.6,
             )
         } else {
             let flag_animation_state = (data.oscillation_angle(16.0) as usize) % 9;
@@ -258,11 +274,7 @@ impl Render for BoardBase {
             let target =
                 tile_from_mouse_pos(state, Vec2::new(mouse.x, mouse.y), width, height, offset);
 
-            let center = pos_to_screen(
-                state,
-                Vec2f::new(target.x as f32 + 0.5, target.y as f32 + 0.5),
-                offset,
-            );
+            let center = pos_to_screen(state, target.to_center_vec2f(), offset);
             let rect = FRect::from_center(center.into_fpoint(), TILE_SIZE, TILE_SIZE);
 
             copy(
@@ -296,15 +308,16 @@ impl Render for BoardBase {
                 .texture_from_collectible_mut(collectible.ty)
             {
                 let center = pos_to_screen(state, collectible.pos, offset);
+                let scale = collectible.ty.collectible_rect_scale();
                 copy_with_rotation(
                     data.canvas,
                     multiply_alphas(alpha, collectible_alpha),
                     texture,
                     None,
                     FRect::from_center(
-                        (center + Vec2f::new(0.0, vertical_offset)).into_fpoint(),
-                        COLLECTIBLE_SIZE * size_multiplier,
-                        COLLECTIBLE_SIZE * size_multiplier,
+                        center.add_y(vertical_offset).into_fpoint(),
+                        COLLECTIBLE_SIZE * size_multiplier * scale.x,
+                        COLLECTIBLE_SIZE * size_multiplier * scale.y,
                     ),
                     10.0 * angle_sine,
                 )?;
@@ -400,7 +413,10 @@ impl Logic for BoardBase {
             // Check for an item to be placed.
             if mouse_up {
                 let mouse_pos = Vec2f::new(mouse_pos.x, mouse_pos.y);
-                state.try_place_item(screen_to_pos(state, mouse_pos, 0.0).map(|f| f as i32));
+                state.try_place_item(
+                    screen_to_pos(state, mouse_pos, 0.0).map(|f| f as i32),
+                    delta,
+                );
             }
 
             state.tick(delta)

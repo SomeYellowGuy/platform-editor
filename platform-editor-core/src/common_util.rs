@@ -1,6 +1,9 @@
 //! Common utility methods for Platform Editor implementations.
 
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::{
+    f32::consts::PI,
+    ops::{Add, Div, Mul, Neg, Sub},
+};
 
 /// Returns the number of digits of a `usize`.
 pub fn digit_count(int: usize) -> usize {
@@ -165,6 +168,30 @@ impl<T: Neg<Output = T>> Neg for Vec2<T> {
     }
 }
 
+impl<T: Add<Output = T>> Vec2<T> {
+    /// Adds `dx` to the x-component of this vector, returning the new vector.
+    pub fn add_x(self, dx: T) -> Self {
+        Vec2::new(self.x + dx, self.y)
+    }
+
+    /// Adds `dy` to the y-component of this vector, returning the new vector.
+    pub fn add_y(self, dy: T) -> Self {
+        Vec2::new(self.x, self.y + dy)
+    }
+}
+
+impl Vec2<usize> {
+    /// Converts this vector to a `Vec2f`.
+    pub fn to_vec2f(self) -> Vec2f {
+        Vec2f::new(self.x as f32, self.y as f32)
+    }
+
+    /// Converts this vector to a centered `Vec2f` (the point is shifted by `(0.5, 0.5)` up and right).
+    pub fn to_center_vec2f(self) -> Vec2f {
+        Vec2f::new(self.x as f32 + 0.5, self.y as f32 + 0.5)
+    }
+}
+
 macro_rules! assign {
     ($tr:ty, $func:ident, $op_tr:ident, $op:tt) => {
         impl<T: Clone + $op_tr<Output = T>> $tr for Vec2<T> {
@@ -282,6 +309,10 @@ impl Rectf {
     pub fn touches_y_line(self, y: f32) -> bool {
         (self.pos.y..=(self.pos.y + self.dimensions.y)).contains(&y)
     }
+
+    pub fn inflate(self, by: f32) -> Self {
+        Rectf::from_dimensions(self.pos, self.dimensions.x + by, self.dimensions.y + by)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -316,6 +347,15 @@ impl Direction {
             Self::Down => Self::Up,
             Self::Left => Self::Right,
             Self::Right => Self::Left,
+        }
+    }
+
+    pub const fn angle(self) -> f32 {
+        match self {
+            Direction::Up => -PI / 2.0,
+            Direction::Down => PI / 2.0,
+            Direction::Left => PI,
+            Direction::Right => 0.0,
         }
     }
 }
