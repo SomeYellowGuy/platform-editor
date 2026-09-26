@@ -1,6 +1,4 @@
-use crate::{
-    common_util::{Direction, Rectf}
-};
+use crate::common_util::{Direction, Rectf};
 
 pub mod definition;
 mod lock_color_map;
@@ -93,7 +91,7 @@ pub enum StarCondition {
     /// The number of items placed must at most be equal to this value.
     Items(u32),
     /// At least this number of enemies must be defeated.
-    Enemies(u32),
+    EnemiesDefeated(u32),
     /// At least this number of enemies must be left alive.
     EnemiesLeft(u32),
     /// The player must be in this gravity state.
@@ -103,8 +101,16 @@ pub enum StarCondition {
 impl StarCondition {
     pub fn number_display(&self) -> Option<u32> {
         match self {
-            Self::Time(n) | Self::Items(n) | Self::Enemies(n) | Self::EnemiesLeft(n) => Some(*n),
+            Self::Time(n) | Self::Items(n) | Self::EnemiesDefeated(n) | Self::EnemiesLeft(n) => {
+                Some(*n)
+            }
             _ => None,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnemyType {
+    Normal,
+    Slow,
 }

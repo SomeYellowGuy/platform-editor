@@ -1,5 +1,5 @@
 use crate::{
-    common_util::{Bidirection, Direction, Rectf, Vec2f},
+    common_util::{Direction, Rectf, Vec2f},
     level::{
         definition::MovingBlockItem,
         state::{CollisionContext, TileState},
@@ -12,6 +12,8 @@ pub struct Moving {
 
     pub pos: Vec2f,
     pub direction: Direction,
+
+    pub flip_cooldown: f32,
 }
 
 /// A snapshot of all hitboxes of the moving platforms in a level.
@@ -38,7 +40,7 @@ impl MovingHitboxSnapshot {
 }
 
 impl Moving {
-    pub const SPEED: f32 = 3.0;
+    pub const SPEED: f32 = 2.0;
     const HITBOX_SIZE: f32 = 0.99;
 
     pub fn new(ty: MovingBlockItem, pos: Vec2f) -> Self {
@@ -46,6 +48,7 @@ impl Moving {
             pos,
             direction: Self::initial_direction(&ty),
             ty,
+            flip_cooldown: 0.0,
         }
     }
 
@@ -61,6 +64,10 @@ impl Moving {
         Rectf::from_center(self.pos, Vec2f::new(Self::HITBOX_SIZE, Self::HITBOX_SIZE))
     }
 
+    pub fn target_velocity(&self, delta: f32) -> Vec2f {
+        self.direction.unit_vec2f() * Self::SPEED * delta
+    }
+
     pub fn velocity(
         &self,
         index: usize,
@@ -69,7 +76,7 @@ impl Moving {
         delta: f32,
     ) -> Vec2f {
         let mut pos = self.pos;
-        let velocity = self.direction.unit_vec2f() * Self::SPEED * delta;
+        let velocity = self.target_velocity(delta);
         let quality = ((velocity.x.abs() + velocity.y.abs()).ceil() * 5.0) as usize;
         let hitbox = self.hitbox();
         for _ in 0..quality {
@@ -108,42 +115,40 @@ impl Moving {
         snapshot: &MovingHitboxSnapshot,
         delta: f32,
     ) {
-        let velocity = self.direction.unit_vec2f() * Self::SPEED * delta;
+        self.flip_cooldown = (self.flip_cooldown - delta).max(0.0);
+
+        let mut velocity = self.target_velocity(delta);
         let quality = ((velocity.x.abs() + velocity.y.abs()).ceil() * 5.0) as usize;
-        let hitbox = self.hitbox();
+
         for _ in 0..quality {
             let x = self.pos.x;
             self.pos.x += velocity.x / quality as f32;
-            if Self::is_colliding(hitbox, index, tiles, snapshot) {
+            if Self::is_colliding(self.hitbox(), index, tiles, snapshot) {
                 self.pos.x = x;
                 self.update_x_velocity();
-                break;
+                velocity = self.target_velocity(delta);
             }
         }
         for _ in 0..quality {
             let y = self.pos.y;
             self.pos.y += velocity.y / quality as f32;
-            if Self::is_colliding(hitbox, index, tiles, snapshot) {
+            if Self::is_colliding(self.hitbox(), index, tiles, snapshot) {
                 self.pos.y = y;
                 self.update_y_velocity();
-                break;
+                velocity = self.target_velocity(delta);
             }
         }
     }
 
     fn update_x_velocity(&mut self) {
-        if let MovingBlockItem::Horizontal = self.ty
-            && self.direction.bidirection() == Bidirection::Horizontal
-        {
-            self.direction = self.direction.opposite()
+        if let MovingBlockItem::Horizontal = self.ty {
+            self.direction = self.direction.opposite();
         }
     }
 
     fn update_y_velocity(&mut self) {
-        if let MovingBlockItem::Vertical = self.ty
-            && self.direction.bidirection() == Bidirection::Vertical
-        {
-            self.direction = self.direction.opposite()
+        if let MovingBlockItem::Vertical = self.ty {
+            self.direction = self.direction.opposite();
         }
     }
 

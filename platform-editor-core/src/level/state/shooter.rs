@@ -97,12 +97,12 @@ pub struct ShooterBullet {
 }
 
 impl ShooterBullet {
-    pub const SPEED: f32 = 4.5;
+    pub const SPEED: f32 = 5.5;
 
-    pub const HIT_RADIUS: f32 = 0.2;
+    pub const HIT_RADIUS: f32 = 0.27;
     pub const SIZE: f32 = 2.0 * Self::HIT_RADIUS;
 
-    pub const IMMUNE_TIME: f32 = (0.6 / Self::SPEED) + 0.04;
+    pub const IMMUNE_TIME: f32 = (0.6 / Self::SPEED) + 0.6;
 
     pub fn new(shooter: &ShooterState) -> Self {
         Self {

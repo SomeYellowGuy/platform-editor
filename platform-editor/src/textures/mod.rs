@@ -58,7 +58,7 @@ impl<'c> Textures<'c> {
                 collect: load_texture(creator, "assets/gfx/icons/collect.png")?,
                 time: load_texture(creator, "assets/gfx/icons/time.png")?,
                 items: load_texture(creator, "assets/gfx/icons/items.png")?,
-                enemies: load_texture(creator, "assets/gfx/icons/enemies.png")?,
+                enemies_defeated: load_texture(creator, "assets/gfx/icons/enemies_defeated.png")?,
                 enemies_left: load_texture(creator, "assets/gfx/icons/enemies_left.png")?,
                 gravity: load_texture(creator, "assets/gfx/icons/gravity.png")?,
             },
@@ -117,6 +117,7 @@ pub struct LevelTextures<'c> {
     pub tiles: TileTextures<'c>,
 
     pub player: Texture<'c>,
+    pub enemy: Texture<'c>,
     pub flags: [Texture<'c>; 9],
     pub hit_flag: Texture<'c>,
     pub collectibles: CollectibleTextures<'c>,
@@ -139,6 +140,7 @@ impl<'c> LevelTextures<'c> {
         Some(Self {
             tiles: Self::load_tile_textures(creator)?,
             player: load_texture(creator, "assets/gfx/level/player.png")?,
+            enemy: load_texture(creator, "assets/gfx/level/enemy.png")?,
             flags: flags.try_into().ok()?,
             hit_flag: load_texture(creator, "assets/gfx/level/flag/hit.png")?,
             collectibles: CollectibleTextures {

@@ -8,7 +8,7 @@ pub struct IconTextures<T> {
     pub collect: T,
     pub time: T,
     pub items: T,
-    pub enemies: T,
+    pub enemies_defeated: T,
     pub enemies_left: T,
     pub gravity: T,
 }
@@ -20,7 +20,7 @@ impl<T> IconTextures<T> {
             Some(StarCondition::Collect(_)) => &self.collect,
             Some(StarCondition::Time(_)) => &self.time,
             Some(StarCondition::Items(_)) => &self.items,
-            Some(StarCondition::Enemies(_)) => &self.enemies,
+            Some(StarCondition::EnemiesDefeated(_)) => &self.enemies_defeated,
             Some(StarCondition::EnemiesLeft(_)) => &self.enemies_left,
             Some(StarCondition::Gravity(_)) => &self.gravity,
         }
@@ -32,7 +32,7 @@ impl<T> IconTextures<T> {
             Some(StarCondition::Collect(_)) => &mut self.collect,
             Some(StarCondition::Time(_)) => &mut self.time,
             Some(StarCondition::Items(_)) => &mut self.items,
-            Some(StarCondition::Enemies(_)) => &mut self.enemies,
+            Some(StarCondition::EnemiesDefeated(_)) => &mut self.enemies_defeated,
             Some(StarCondition::EnemiesLeft(_)) => &mut self.enemies_left,
             Some(StarCondition::Gravity(_)) => &mut self.gravity,
         }

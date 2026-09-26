@@ -2,7 +2,7 @@ use crate::{
     common_util::{Bidirection, Direction, Rectf, Vec2, Vec2f, digit_count},
     level::{
         LockBorderType, LockColor, StarCondition,
-        definition::{Collectible, CollectibleType, FlagState, ItemStack, Tile},
+        definition::{Collectible, CollectibleType, Enemy, FlagState, ItemStack, Tile},
         state::Lock,
     },
 };
@@ -252,6 +252,8 @@ pub struct StoredScratchLevel {
     pub star_conditions: [ScratchStarCondition; 2],
     /// The item stacks of the level.
     pub items: &'static [ItemStack],
+    /// The enemies in the level.
+    pub enemies: &'static [Enemy],
 }
 
 impl StoredScratchLevel {
@@ -270,6 +272,7 @@ impl StoredScratchLevel {
                 ScratchStarCondition::Time(10),
             ],
             items: &[],
+            enemies: &[],
         })
     }
 }
@@ -308,6 +311,11 @@ impl StoredScratchLevelBuilder {
 
     pub const fn items(mut self, items: &'static [ItemStack]) -> Self {
         self.0.items = items;
+        self
+    }
+
+    pub const fn enemies(mut self, enemies: &'static [Enemy]) -> Self {
+        self.0.enemies = enemies;
         self
     }
 
@@ -393,7 +401,7 @@ impl From<ScratchStarCondition> for StarCondition {
             ScratchStarCondition::Collect => Self::Collect(0),
             ScratchStarCondition::Time(t) => Self::Time(t),
             ScratchStarCondition::Items(i) => Self::Items(i),
-            ScratchStarCondition::Enemies(e) => Self::Enemies(e),
+            ScratchStarCondition::Enemies(e) => Self::EnemiesDefeated(e),
             ScratchStarCondition::EnemiesLeft(e) => Self::EnemiesLeft(e),
             ScratchStarCondition::NormalGravity => Self::Gravity(Direction::Down),
             ScratchStarCondition::InvertedGravity => Self::Gravity(Direction::Up),

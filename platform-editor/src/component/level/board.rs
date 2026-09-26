@@ -296,6 +296,22 @@ impl Render for BoardBase {
             ),
         )?;
 
+        // Draw the enemies.
+        for enemy in &state.enemies {
+            let enemy_center = pos_to_screen(state, enemy.entity.pos, offset).into_fpoint();
+            copy(
+                data.canvas,
+                alpha,
+                &mut data.textures.level.enemy,
+                None,
+                FRect::from_center(
+                    enemy_center,
+                    Entity::SIZE * TILE_SIZE,
+                    Entity::SIZE * TILE_SIZE,
+                ),
+            )?;
+        }
+
         // Draw the flag.
         let flag_center = pos_to_screen(state, state.flag.pos, offset).into_fpoint();
         let (texture, width_mul, height_mul) = if let Some(instant) = state.finish_instant {

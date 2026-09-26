@@ -1,7 +1,7 @@
 use crate::{
     common_util::{Direction, Vec2, Vec2f},
     level::{
-        definition::{Item, ItemStack, MovingBlockItem},
+        definition::{Enemy, Item, ItemStack, MovingBlockItem},
         scratch::{
             ScratchCollectible as Collectible, ScratchCollectibleType as CollectibleType,
             ScratchLockColor as LockColor, ScratchStarCondition as StarCondition,
@@ -100,5 +100,45 @@ pub const LEVELS: &[Level] = &[
             Collectible::key(Vec2f::new(6.5, 1.5), LockColor::Red),
             Collectible::new(Vec2f::new(11.5, 1.0), CollectibleType::Star)
         ])
+        .build(),
+    // Level 11
+    Level::builder(br"00000000900600000000000200000002222232000000B0000030E00002222223020000A000000032000222222223300033333333")
+        .start_pos(Vec2::new(0.5, 3.8))
+        .flag_pos(Vec2::new(10.3, 3.5))
+        .items(&[
+            ItemStack::new(Item::Moving(MovingBlockItem::Vertical), 1),
+            ItemStack::new(Item::TimedBlock(2), 4)
+        ])
+        .stars(StarCondition::Items(4), StarCondition::Time(20))
+        .collectibles(&[
+            Collectible::key(Vec2f::new(9.5, 0.5), LockColor::Red),
+            Collectible::key(Vec2f::new(12.5, 0.8), LockColor::Orange)
+        ])
+        .build(),
+    // Level 12
+    Level::builder(br"000000000000000000000000000000000000000000000EE000000000009100000000000000000000001000000002222222222222")
+        .start_pos(Vec2::new(1.5, 4.5))
+        .flag_pos(Vec2::new(11.5, 6.5))
+        .items(&[
+            ItemStack::new(Item::TimedBlock(3), 1)
+        ])
+        .enemies(&[Enemy::normal(Vec2f::new(9.5, 6.5))])
+        .stars(StarCondition::Enemies(1), StarCondition::Time(9))
+        .build(),
+    // Level 13
+    Level::builder(br"000000000000000000000000000000000000000000000000002200000000000A0222200000022210000000000333222222222233")
+        .start_pos(Vec2::new(1.5, 3.5))
+        .flag_pos(Vec2::new(12.0, 2.5))
+        .items(&[
+            ItemStack::new(Item::Moving(MovingBlockItem::Vertical), 1),
+            ItemStack::new(Item::Moving(MovingBlockItem::Single(Direction::Left)), 1)
+        ])
+        .enemies(&[
+            Enemy::normal(Vec2f::new(7.0, 6.5)),
+            Enemy::normal(Vec2f::new(8.5, 6.5)),
+            Enemy::normal(Vec2f::new(12.5, 4.5))
+        ])
+        .stars(StarCondition::EnemiesLeft(3), StarCondition::Enemies(3))
+        .collectibles(&[Collectible::key(Vec2f::new(6.5, 2.0), LockColor::Red)])
         .build()
 ];

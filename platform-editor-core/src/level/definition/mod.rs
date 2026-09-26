@@ -12,7 +12,30 @@ pub use moving::MovingBlockItem;
 pub use tile::Tile;
 pub use unlocking::StoredLock;
 
-use crate::common_util::Direction;
+use crate::{
+    common_util::{Direction, Vec2f},
+    level::EnemyType,
+};
+
+#[derive(Debug, Clone)]
+pub struct Enemy {
+    pub ty: EnemyType,
+    pub pos: Vec2f,
+}
+
+impl Enemy {
+    pub const fn new(ty: EnemyType, pos: Vec2f) -> Self {
+        Self { ty, pos }
+    }
+
+    pub const fn normal(pos: Vec2f) -> Self {
+        Self::new(EnemyType::Normal, pos)
+    }
+
+    pub const fn slow(pos: Vec2f) -> Self {
+        Self::new(EnemyType::Slow, pos)
+    }
+}
 
 /// An extra condition for a star to be collected when a level is finished.
 #[derive(Debug, Clone)]

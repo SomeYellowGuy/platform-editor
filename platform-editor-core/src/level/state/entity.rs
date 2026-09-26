@@ -3,6 +3,7 @@ use std::f32::consts::PI;
 use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
     level::{
+        EnemyType,
         definition::Tile,
         state::{
             CollectibleState, LockState, Moving, TileCollision, TileState,
@@ -70,6 +71,7 @@ pub struct Entity {
 
     is_falling: bool,
     platform_move_vector: Option<Vec2f>,
+    coyote_time_left: f32,
 }
 
 impl Default for Entity {
@@ -80,6 +82,7 @@ impl Default for Entity {
             gravity_direction: Direction::Down,
             is_falling: Default::default(),
             platform_move_vector: None,
+            coyote_time_left: Self::COYOTE_TIME,
         }
     }
 }
@@ -154,6 +157,9 @@ impl Entity {
     /// The lateral velocity of an entity if they move.
     pub const MOVE_VELOCITY: f32 = 0.6;
 
+    /// The coyote time provided to an entity for jumping.
+    pub const COYOTE_TIME: f32 = 0.1;
+
     pub fn hitbox(&self) -> Rectf {
         Self::hitbox_from_pos(self.pos)
     }
@@ -220,13 +226,21 @@ impl Entity {
         let horizontal = -(controls.left() as i8) + (controls.right() as i8);
         self.velocity.x += horizontal as f32 * delta * Self::MOVE_VELOCITY;
 
-        if !self.is_falling && controls.jump() {
+        if !self.is_falling {
+            self.coyote_time_left = Self::COYOTE_TIME
+        } else {
+            self.coyote_time_left -= delta;
+        }
+
+        if self.coyote_time_left > f32::EPSILON && controls.jump() {
+            self.coyote_time_left = 0.0;
             let new_velocity = -Self::JUMP_VELOCITY * self.gravity_multiplier();
             let gravity_component = self.velocity.get_mut(self.gravity_direction.bidirection());
             *gravity_component = new_velocity;
         }
     }
 
+    /// Moves this entity by its velocity in steps.
     pub fn move_in_steps(&mut self, context: CollisionContext) {
         let quality = ((self.velocity.x.abs() + self.velocity.y.abs()).ceil() * 5.0) as usize;
         self.is_falling = true;
@@ -330,7 +344,6 @@ impl Entity {
                 angle += 2.0 * PI / DIRECTIONS_PER_LOOP as f32;
             }
             distance += 0.025;
-            println!("{distance}")
         }
 
         None
@@ -348,5 +361,68 @@ impl Entity {
                 (!c.is_collected() && c.is_touching(self.pos, Self::RADIUS)).then_some(c)
             })
             .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Enemy {
+    pub ty: EnemyType,
+    pub entity: Entity,
+    last_x_pos: Option<f32>,
+}
+
+impl Enemy {
+    const MAX_PLAYER_DISTANCE: f32 = 4.6;
+    const PLAYER_POSITION_THRESHOLD: f32 = 0.16;
+    const JUMP_THRESHOLD: f32 = 0.04;
+
+    pub fn new(ty: EnemyType, pos: Vec2f) -> Self {
+        Enemy {
+            ty,
+            entity: Entity {
+                pos,
+                ..Default::default()
+            },
+            last_x_pos: None,
+        }
+    }
+
+    /// Ticks this entity.
+    ///
+    /// Returns whether this entity is still alive.
+    pub fn tick(&mut self, player_pos: Vec2f, context: CollisionContext) -> bool {
+        let controls = self.controls(player_pos);
+        self.entity.tick(controls, context)
+    }
+
+    fn controls(&mut self, player_pos: Vec2f) -> Controls {
+        if player_pos.distance_sqr(self.entity.pos)
+            > Self::MAX_PLAYER_DISTANCE * Self::MAX_PLAYER_DISTANCE
+        {
+            return Controls::new(false, false, false);
+        }
+
+        let diff = self.entity.pos.x - player_pos.x;
+        let (left, right) = if diff.abs() >= Self::PLAYER_POSITION_THRESHOLD {
+            if diff < 0.0 {
+                // The entity is to the left of the player.
+                (false, true)
+            } else {
+                (true, false)
+            }
+        } else {
+            (false, false)
+        };
+
+        let jump = if let Some(x) = self.last_x_pos {
+            (x - self.entity.pos.x).abs() < Self::JUMP_THRESHOLD
+                && self.entity.gravity_multiplier() * self.entity.pos.x > 0.0
+        } else {
+            false
+        };
+
+        self.last_x_pos = Some(self.entity.pos.x);
+
+        Controls::new(left, right, jump)
     }
 }

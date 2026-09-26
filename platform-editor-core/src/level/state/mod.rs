@@ -18,7 +18,7 @@ use crate::{
 
 pub use {
     collectible::CollectibleState,
-    entity::{CollisionContext, Controls, Entity},
+    entity::{CollisionContext, Controls, Enemy, Entity},
     moving::Moving,
     shooter::{ShooterBullet, ShooterState},
 };
@@ -210,6 +210,10 @@ pub struct LevelState {
 
     /// The active lock state in the level.
     pub lock_state: LockState,
+
+    /// The enemies in the level.
+    pub enemies: Vec<Enemy>,
+    pub enemies_at_start: usize,
 }
 
 pub enum LevelStateOutcome {
@@ -259,6 +263,12 @@ impl LevelState {
         self.tile_state.tiles = tiles;
         self.player.pos = level.start_pos;
         self.player.velocity = Vec2f::new(0.0, 0.0);
+        self.enemies = level
+            .enemies
+            .iter()
+            .map(|e| Enemy::new(e.ty, e.pos))
+            .collect();
+        self.enemies_at_start = self.enemies.len();
         self.player.gravity_direction = Direction::Down;
         self.flag = level.flag;
 
@@ -334,6 +344,23 @@ impl LevelState {
             return LevelStateOutcome::Lose;
         }
 
+        // Tick the enemies.
+        self.enemies
+            .retain_mut(|e| e.tick(self.player.pos, collision_context));
+
+        // Check if any enemies touch the player.
+        let player_hitbox = self.player.hitbox();
+        for enemy in &self.enemies {
+            if enemy
+                .entity
+                .hitbox()
+                .inflate(-0.2)
+                .intersects(player_hitbox)
+            {
+                return LevelStateOutcome::Lose;
+            }
+        }
+
         // Check for any collected collectibles.
         let collected_colors: Vec<LockColor> = Vec::new();
         for collectible in self.player.check_collectibles(&mut self.collectibles) {
@@ -385,6 +412,10 @@ impl LevelState {
                 .is_none_or(|s| s.elapsed().as_secs() <= *t as u64),
             StarCondition::Items(items) => self.placed_items <= *items,
             StarCondition::Collect(i) => self.collected_star_indices.contains(i),
+            StarCondition::EnemiesDefeated(e) => {
+                self.enemies_at_start - self.enemies.len() >= *e as usize
+            }
+            StarCondition::EnemiesLeft(e) => self.enemies.len() >= *e as usize,
             _ => true, // TODO
         }
     }
