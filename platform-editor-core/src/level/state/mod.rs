@@ -9,9 +9,9 @@ use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f, Vec2i},
     component::level::end_dialog::StarStatus,
     level::{
-        StarCondition,
-        definition::{CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, Tile},
-        scratch::StoredScratchLevel,
+        LockBorderType, LockColor, LockColorMap, StarCondition,
+        definition::{CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, StoredLock, Tile},
+        scratch::{ScratchTileState, StoredScratchLevel},
         state::moving::MovingHitboxSnapshot,
     },
 };
@@ -94,6 +94,90 @@ impl TileState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Lock {
+    pub rect: Rectf,
+    pub keyhole_offset: Vec2f,
+    pub border_type: LockBorderType,
+}
+
+impl Lock {
+    pub const BORDER_THICKNESS: f32 = 0.11;
+    pub const KEYHOLE_SIZE: f32 = 0.35;
+
+    pub const FADE_TIME: f32 = 0.2;
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct LockState {
+    /// The active locks in the level.
+    locks: LockColorMap<Vec<Lock>>,
+    /// The [`Instants`] when a key of each color has been collected.
+    key_collect_instants: LockColorMap<Instant>,
+}
+
+impl LockState {
+    pub fn new() -> Self {
+        Self {
+            locks: LockColorMap::new(),
+            key_collect_instants: LockColorMap::new(),
+        }
+    }
+
+    pub fn clear(&mut self) {}
+
+    /// Gets the instant when a key of the provided color was collected.
+    pub fn key_collect_instant(&self, color: LockColor) -> Option<Instant> {
+        self.key_collect_instants.get(color).copied()
+    }
+
+    /// Adds a lock to this lock state.
+    pub fn add_lock(&mut self, lock: Lock, color: LockColor) {
+        if let Some(v) = self.locks.get_mut(color) {
+            v.push(lock);
+        } else {
+            self.locks.insert(color, vec![lock]);
+        }
+    }
+
+    /// Adds a stored lock to this lock state.
+    pub fn add_stored_lock(&mut self, lock: StoredLock) {
+        if let Some(v) = self.locks.get_mut(lock.color) {
+            v.push(lock.into());
+        } else {
+            self.locks.insert(lock.color, vec![lock.into()]);
+        }
+    }
+
+    pub fn locks(&self) -> &LockColorMap<Vec<Lock>> {
+        &self.locks
+    }
+
+    /// Unlocks all locks of the provided color.
+    pub fn unlock(&mut self, color: LockColor) {
+        self.key_collect_instants.insert(color, Instant::now());
+    }
+
+    /// Returns whether the locks of the given color are unlocked.
+    pub fn is_unlocked(&self, color: LockColor) -> bool {
+        self.key_collect_instants.contains_key(color)
+    }
+
+    /// Returns whether the provided hitbox is colliding with any active
+    /// lock in the level.
+    pub fn is_colliding(&self, hitbox: Rectf) -> bool {
+        for (color, locks) in &self.locks {
+            if self.is_unlocked(color) {
+                continue;
+            }
+            if locks.iter().any(|l| l.rect.intersects(hitbox)) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct LevelState {
     pub finish_instant: Option<Instant>,
@@ -123,6 +207,9 @@ pub struct LevelState {
 
     /// The active moving platforms in the level.
     pub moving: Vec<Moving>,
+
+    /// The active lock state in the level.
+    pub lock_state: LockState,
 }
 
 pub enum LevelStateOutcome {
@@ -141,6 +228,7 @@ impl LevelState {
         let level = &crate::level::scratch::levels::LEVELS[index];
         let mut tiles = Vec::new();
 
+        self.lock_state.clear();
         self.shooters.clear();
         self.shooter_bullets.clear();
         self.tile_state.size = Vec2::new(StoredScratchLevel::WIDTH, StoredScratchLevel::HEIGHT);
@@ -148,8 +236,11 @@ impl LevelState {
             for x in 0..StoredScratchLevel::WIDTH {
                 let mut set_tile = Tile::Empty;
                 let i = y * self.tile_state.size.x + x;
-                if let Some(tile) = level.tiles[i].to_tile_state(i) {
-                    set_tile = tile
+                match level.tiles[i].to_tile_state(i) {
+                    ScratchTileState::Tile(t) => set_tile = t,
+                    ScratchTileState::Lock(lock) => self
+                        .lock_state
+                        .add_lock(lock.into_lock(Vec2::new(x, y)), lock.color),
                 }
                 if let Tile::Shooter {
                     direction,
@@ -208,8 +299,13 @@ impl LevelState {
             moving.tick(i, &self.tile_state, &snapshot, delta);
         }
 
-        let collision_context =
-            CollisionContext::new(&self.tile_state, &self.moving, &snapshot, delta);
+        let collision_context = CollisionContext::new(
+            &self.tile_state,
+            &self.lock_state,
+            &self.moving,
+            &snapshot,
+            delta,
+        );
 
         // Update the moving platform vectors for the player.
         self.player.update_platform_move_vector(collision_context);
@@ -239,10 +335,24 @@ impl LevelState {
         }
 
         // Check for any collected collectibles.
+        let collected_colors: Vec<LockColor> = Vec::new();
         for collectible in self.player.check_collectibles(&mut self.collectibles) {
             collectible.mark_collected();
-            if let CollectibleType::Star(i) = collectible.ty {
-                self.collected_star_indices.push(i);
+            match collectible.ty {
+                CollectibleType::Star(i) => self.collected_star_indices.push(i),
+                CollectibleType::Key(color) => {
+                    self.lock_state.unlock(color);
+                    // "Collect" all other keys of the same color later.
+                }
+                CollectibleType::GravityOrb => todo!(),
+            }
+        }
+
+        for collectible in &mut self.collectibles {
+            if let CollectibleType::Key(color) = collectible.ty
+                && collected_colors.contains(&color)
+            {
+                collectible.mark_collected();
             }
         }
 
@@ -349,8 +459,13 @@ impl LevelState {
                 self.moving.push(moving_platform);
 
                 let snapshot = MovingHitboxSnapshot::new(&self.moving);
-                let context =
-                    CollisionContext::new(&self.tile_state, &self.moving, &snapshot, delta);
+                let context = CollisionContext::new(
+                    &self.tile_state,
+                    &self.lock_state,
+                    &self.moving,
+                    &snapshot,
+                    delta,
+                );
                 // Check if the player is colliding with the moving platform.
                 if self.player.colliding_with_moving(context).is_some() {
                     // Reverse the placement.

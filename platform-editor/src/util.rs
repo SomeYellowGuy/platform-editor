@@ -1,8 +1,11 @@
-use platform_editor_core::common_util::Vec2;
+use platform_editor_core::common_util::{Rectf, Vec2, Vec2f};
 use sdl3::{
+    pixels::Color,
     rect::Rect,
-    render::{FPoint, FRect},
+    render::{Canvas, FPoint, FRect, RenderTarget, Vertex, VertexIndices},
 };
+
+use crate::render::DrawResult;
 
 /// An external trait that provides extraneous [`FRect`] methods.
 pub trait FRectExt {
@@ -14,6 +17,9 @@ pub trait FRectExt {
 
     /// Converts this rectangle into a [`Rect`].
     fn into_rect(self) -> Rect;
+
+    /// Converts this rectangle into a [`Rectf`].
+    fn into_rectf(self) -> Rectf;
 }
 
 impl FRectExt for FRect {
@@ -35,6 +41,10 @@ impl FRectExt for FRect {
     fn into_rect(self) -> Rect {
         Rect::new(self.x as i32, self.y as i32, self.w as u32, self.h as u32)
     }
+
+    fn into_rectf(self) -> Rectf {
+        Rectf::from_xy_and_dimensions(self.x, self.y, self.w, self.h)
+    }
 }
 
 /// An external trait to convert a struct into an [`FPoint`].
@@ -52,5 +62,52 @@ impl IntoFPoint for FPoint {
 impl IntoFPoint for Vec2<f32> {
     fn into_fpoint(self) -> FPoint {
         FPoint::new(self.x, self.y)
+    }
+}
+
+/// An external trait to convert a struct into an [`FRect`].
+pub trait IntoFRect {
+    /// Converts this point into an [`FRect`].
+    fn into_frect(self) -> FRect;
+}
+
+impl IntoFRect for Rectf {
+    fn into_frect(self) -> FRect {
+        FRect::new(self.pos.x, self.pos.y, self.dimensions.x, self.dimensions.y)
+    }
+}
+
+pub struct Corners<T> {
+    pub top_left: T,
+    pub top_right: T,
+    pub bottom_left: T,
+    pub bottom_right: T,
+}
+
+/// An external trait that provides extraneous [`Canvas`] methods.
+pub trait CanvasExt {
+    fn fill_gradient_rect(&mut self, corners: Corners<Color>, rect: FRect) -> DrawResult;
+}
+
+fn vertex(color: Color, position: Vec2f) -> Vertex {
+    Vertex {
+        position: position.into_fpoint(),
+        color: color.into(),
+        tex_coord: FPoint::new(0.0, 0.0),
+    }
+}
+
+impl<T: RenderTarget> CanvasExt for Canvas<T> {
+    fn fill_gradient_rect(&mut self, corners: Corners<Color>, rect: FRect) -> DrawResult {
+        const INDICES: [u8; 6] = [0, 1, 2, 2, 3, 0];
+
+        let rect = rect.into_rectf();
+        let vertices = &[
+            vertex(corners.top_left, rect.pos),
+            vertex(corners.top_right, rect.pos.add_x(rect.dimensions.x)),
+            vertex(corners.bottom_right, rect.pos + rect.dimensions),
+            vertex(corners.bottom_left, rect.pos.add_y(rect.dimensions.y)),
+        ];
+        self.render_geometry(vertices, None, VertexIndices::U8(&INDICES))
     }
 }

@@ -1,8 +1,9 @@
 use crate::{
-    common_util::{Direction, Vec2f, digit_count},
+    common_util::{Bidirection, Direction, Rectf, Vec2, Vec2f, digit_count},
     level::{
-        LockColor, StarCondition,
+        LockBorderType, LockColor, StarCondition,
         definition::{Collectible, CollectibleType, FlagState, ItemStack, Tile},
+        state::Lock,
     },
 };
 
@@ -49,9 +50,76 @@ impl From<SpikeDirection> for Direction {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum LockAxis {
-    X,
-    Y,
+pub struct ScratchLock {
+    pub color: LockColor,
+    pub orientation: Bidirection,
+}
+
+impl ScratchLock {
+    pub const THICKNESS: f32 = 0.4;
+
+    pub const fn new(color: LockColor, orientation: Bidirection) -> Self {
+        Self { color, orientation }
+    }
+
+    fn vertical_rect(center: Vec2f) -> Rectf {
+        Rectf::from_center(center, Vec2f::new(Self::THICKNESS, 1.0))
+    }
+
+    fn horizontal_rect(center: Vec2f) -> Rectf {
+        Rectf::from_center(center, Vec2f::new(1.0, Self::THICKNESS))
+    }
+
+    pub fn into_lock(self, pos: Vec2<usize>) -> Lock {
+        let center = pos.to_center_vec2f();
+
+        let (rect, keyhole_offset) = match (self.color, self.orientation) {
+            (LockColor::Red, Bidirection::Vertical) => {
+                let mut rect = Self::vertical_rect(center);
+                rect.dimensions.y += 0.5;
+                (rect, Some(Vec2f::new(0.0, -0.25)))
+            }
+            (LockColor::Orange, Bidirection::Vertical) => (Self::vertical_rect(center), None),
+            (_, Bidirection::Vertical) => {
+                let mut rect = Self::vertical_rect(center);
+                rect.dimensions.y += 1.0;
+                rect.pos.y -= 0.5;
+                (rect, None)
+            }
+            (LockColor::Yellow, Bidirection::Horizontal) => {
+                let mut rect = Self::horizontal_rect(center);
+                rect.dimensions.x += 0.5;
+                (rect, Some(Vec2f::new(0.0, -0.25)))
+            }
+            (LockColor::Blue, Bidirection::Horizontal) => {
+                let mut rect = Self::horizontal_rect(center);
+                rect.dimensions.y -= (1.0 - Self::THICKNESS) / 2.0;
+                (rect, None)
+            }
+            (_, Bidirection::Horizontal) => {
+                let mut rect = Self::horizontal_rect(center);
+                rect.dimensions.x += 1.0;
+                rect.pos.x -= 0.5;
+                (rect, None)
+            }
+        };
+
+        let border_type = match self.orientation {
+            Bidirection::Horizontal => LockBorderType::OnlyHorizontal,
+            Bidirection::Vertical => LockBorderType::OnlyVertical,
+        };
+
+        Lock {
+            rect,
+            keyhole_offset: keyhole_offset.unwrap_or(Vec2f::new(0.0, 0.0)),
+            border_type,
+        }
+    }
+}
+
+pub enum ScratchTileState {
+    Tile(Tile),
+    Lock(ScratchLock),
 }
 
 /// A tile for an original Scratch level.
@@ -66,7 +134,7 @@ pub enum StoredScratchTile {
 
     Shooter(ShooterDirection),
     Spike(SpikeDirection),
-    Lock(LockColor, LockAxis),
+    Lock(ScratchLock),
 }
 
 impl StoredScratchTile {
@@ -83,17 +151,44 @@ impl StoredScratchTile {
             b'7' => Some(Self::Shooter(ShooterDirection::Right)),
             b'8' => Some(Self::Shooter(ShooterDirection::Up)),
             b'9' => Some(Self::Spike(SpikeDirection::Down)),
-            b'A' => Some(Self::Lock(LockColor::Red, LockAxis::Y)),
-            b'B' => Some(Self::Lock(LockColor::Orange, LockAxis::Y)),
-            b'C' => Some(Self::Lock(LockColor::Yellow, LockAxis::Y)),
-            b'D' => Some(Self::Lock(LockColor::Green, LockAxis::Y)),
+            b'A' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Red,
+                Bidirection::Vertical,
+            ))),
+            b'B' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Orange,
+                Bidirection::Vertical,
+            ))),
+            b'C' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Yellow,
+                Bidirection::Vertical,
+            ))),
+            b'D' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Green,
+                Bidirection::Vertical,
+            ))),
             b'E' => Some(Self::BottomSlab),
-            b'F' => Some(Self::Lock(LockColor::Red, LockAxis::X)),
+            b'F' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Red,
+                Bidirection::Horizontal,
+            ))),
             b'G' => Some(Self::TopSlab),
-            b'H' => Some(Self::Lock(LockColor::Orange, LockAxis::X)),
-            b'I' => Some(Self::Lock(LockColor::Blue, LockAxis::Y)),
-            b'J' => Some(Self::Lock(LockColor::Blue, LockAxis::X)),
-            b'K' => Some(Self::Lock(LockColor::Yellow, LockAxis::X)),
+            b'H' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Orange,
+                Bidirection::Horizontal,
+            ))),
+            b'I' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Blue,
+                Bidirection::Vertical,
+            ))),
+            b'J' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Blue,
+                Bidirection::Horizontal,
+            ))),
+            b'K' => Some(Self::Lock(ScratchLock::new(
+                LockColor::Yellow,
+                Bidirection::Horizontal,
+            ))),
             _ => None,
         }
     }
@@ -118,26 +213,28 @@ impl StoredScratchTile {
         (n * n + 4 * digit_count(n)) % 15
     }
 
-    pub fn to_tile_state(&self, index: usize) -> Option<Tile> {
+    pub fn to_tile_state(&self, index: usize) -> ScratchTileState {
         match self {
-            Self::Empty => Some(Tile::Empty),
-            Self::Block => Some(Tile::Block),
-            Self::TopSlab => Some(Tile::TopSlab),
-            Self::BottomSlab => Some(Tile::BottomSlab),
+            Self::Empty => ScratchTileState::Tile(Tile::Empty),
+            Self::Block => ScratchTileState::Tile(Tile::Block),
+            Self::TopSlab => ScratchTileState::Tile(Tile::TopSlab),
+            Self::BottomSlab => ScratchTileState::Tile(Tile::BottomSlab),
             Self::Grass => {
                 let seed = Self::tile_seed(index + 1);
-                Some(Tile::Grass(if seed < 4 { seed } else { 0 }))
+                ScratchTileState::Tile(Tile::Grass(if seed < 4 { seed } else { 0 }))
             }
             Self::Dirt => {
                 let seed = Self::tile_seed(index + 1);
-                Some(Tile::Dirt(if seed < 5 { seed } else { 0 }))
+                ScratchTileState::Tile(Tile::Dirt(if seed < 5 { seed } else { 0 }))
             }
-            Self::Shooter(shooter_direction) => Some(Tile::Shooter {
+            Self::Shooter(shooter_direction) => ScratchTileState::Tile(Tile::Shooter {
                 direction: (*shooter_direction).into(),
                 speed_multiplier: shooter_direction.speed_multiplier(),
             }),
-            Self::Spike(spike_direction) => Some(Tile::Spike((*spike_direction).into())),
-            Self::Lock(_, _) => None,
+            Self::Spike(spike_direction) => {
+                ScratchTileState::Tile(Tile::Spike((*spike_direction).into()))
+            }
+            Self::Lock(lock) => ScratchTileState::Lock(*lock),
         }
     }
 }

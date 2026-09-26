@@ -11,7 +11,7 @@ use platform_editor_core::{
     level::{
         definition::Tile,
         state::{
-            CollectibleState, Controls, Entity, LevelState, LevelStateOutcome, ShooterBullet,
+            CollectibleState, Controls, Entity, LevelState, LevelStateOutcome, Lock, ShooterBullet,
             ShooterState,
         },
     },
@@ -20,7 +20,7 @@ use platform_editor_core::{
 use sdl3::{
     keyboard::Scancode,
     mouse::MouseButton,
-    pixels::Color,
+    pixels::{Color, PixelFormat},
     render::{BlendMode, Canvas, FRect, Texture},
     video::Window,
 };
@@ -30,7 +30,7 @@ use crate::{
     component::Component,
     logic::Logic,
     render::{DrawResult, Render, RenderData},
-    util::{FRectExt, IntoFPoint},
+    util::{CanvasExt, Corners, FRectExt, IntoFPoint},
 };
 
 /// Whether to visualize the collision and deadly hitboxes of tiles.
@@ -45,15 +45,14 @@ pub const ITEM_PREVIEW_ALPHA: u8 = (u8::MAX as f32 * 0.6) as u8;
 /// Converts a position in *level space* to a [`Vec2f`] on the actual screen.
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
-fn pos_to_screen(state: &LevelState, pos: Vec2f, offset: f32) -> Vec2f {
-    LEVEL_CENTER + pos * TILE_SIZE + Vec2f::new(0.0, offset)
-        - state.tile_state.size.to_vec2f() / 2.0 * TILE_SIZE
+fn pos_to_screen(state: &LevelState, pos: Vec2f, offset: Vec2f) -> Vec2f {
+    LEVEL_CENTER + pos * TILE_SIZE + offset - state.tile_state.size.to_vec2f() / 2.0 * TILE_SIZE
 }
 
 /// Converts a [`Rectf`] in *level space* to an [`FRect`] on the actual screen.
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
-fn rectf_to_screen(state: &LevelState, rect: Rectf, offset: f32) -> FRect {
+fn rectf_to_screen(state: &LevelState, rect: Rectf, offset: Vec2f) -> FRect {
     let pos = pos_to_screen(state, rect.pos, offset);
     FRect::new(
         pos.x,
@@ -66,9 +65,8 @@ fn rectf_to_screen(state: &LevelState, rect: Rectf, offset: f32) -> FRect {
 /// Converts a position in the actual screen of the game to a [`Vec2f`] on the actual screen.
 ///
 /// `(0, 0)` represents the top-left of the level, and 1 unit is 1 level tile.
-fn screen_to_pos(state: &LevelState, screen_pos: Vec2f, offset: f32) -> Vec2f {
-    (screen_pos - LEVEL_CENTER - Vec2f::new(0.0, offset)
-        + state.tile_state.size.to_vec2f() / 2.0 * TILE_SIZE)
+fn screen_to_pos(state: &LevelState, screen_pos: Vec2f, offset: Vec2f) -> Vec2f {
+    (screen_pos - LEVEL_CENTER - offset + state.tile_state.size.to_vec2f() / 2.0 * TILE_SIZE)
         / TILE_SIZE
 }
 
@@ -80,7 +78,7 @@ fn tile_from_mouse_pos(
     mouse_pos: Vec2f,
     width: usize,
     height: usize,
-    offset: f32,
+    offset: Vec2f,
 ) -> Vec2<usize> {
     let mut target = screen_to_pos(state, mouse_pos, offset).map(|f| f as usize);
     target.x = target.x.clamp(0, width - 1);
@@ -118,6 +116,10 @@ fn multiply_alphas(a1: u8, a2: u8) -> u8 {
     ((a1 as u16 * a2 as u16 + 127) / 255) as u8
 }
 
+fn with_alpha(color: u32, alpha: u8) -> u32 {
+    (color & 0x00ff_ffff) + ((alpha as u32) << 24)
+}
+
 //
 
 impl Render for BoardBase {
@@ -135,6 +137,8 @@ impl Render for BoardBase {
         let height = state.tile_state.size.y;
 
         let level_center = LEVEL_CENTER.add_y(offset);
+
+        let offset = Vec2f::new(0.0, offset);
 
         data.canvas.set_blend_mode(BlendMode::Blend);
         data.canvas
@@ -189,6 +193,61 @@ impl Render for BoardBase {
             )?
         }
 
+        // Draw locks.
+        for (color, locks) in state.lock_state.locks().into_iter() {
+            let color_alpha_mod = state
+                .lock_state
+                .key_collect_instant(color)
+                .map_or(0.0, |i| {
+                    (i.elapsed().as_secs_f32() / Lock::FADE_TIME).min(1.0)
+                });
+
+            let lock_alpha = 255 - multiply_alphas(alpha, (color_alpha_mod * 255.0) as u8);
+
+            for lock in locks {
+                let (left_color, right_color) = color.gradient();
+                let (left_color, right_color) = (
+                    Color::from_u32(&PixelFormat::ARGB8888, with_alpha(left_color, lock_alpha)),
+                    Color::from_u32(&PixelFormat::ARGB8888, with_alpha(right_color, lock_alpha)),
+                );
+
+                // Draw the full rectangle with the border color.
+                data.canvas.set_draw_color(Color::from_u32(
+                    &PixelFormat::ARGB8888,
+                    with_alpha(color.border_color(), lock_alpha),
+                ));
+                data.canvas
+                    .fill_rect(rectf_to_screen(state, lock.rect, offset))?;
+
+                // Draw the core rectangle with the gradient.
+                let shrunk_rect = lock
+                    .border_type
+                    .shrink_rect(lock.rect, Lock::BORDER_THICKNESS + 0.01);
+                let corners = Corners {
+                    top_left: left_color,
+                    bottom_left: left_color,
+                    top_right: right_color,
+                    bottom_right: right_color,
+                };
+                data.canvas
+                    .fill_gradient_rect(corners, rectf_to_screen(state, shrunk_rect, offset))?;
+
+                // Draw the keyhole.
+                let keyhole_center = lock.rect.center() + lock.keyhole_offset;
+                copy(
+                    data.canvas,
+                    lock_alpha,
+                    &mut data.textures.level.collectibles.keys.keyhole,
+                    None,
+                    FRect::from_center(
+                        pos_to_screen(state, keyhole_center, offset).into_fpoint(),
+                        Lock::KEYHOLE_SIZE * TILE_SIZE,
+                        Lock::KEYHOLE_SIZE * TILE_SIZE,
+                    ),
+                )?;
+            }
+        }
+
         // Draw the actual tiles.
         for y in 0..height {
             for x in 0..width {
@@ -216,8 +275,8 @@ impl Render for BoardBase {
                     None,
                     FRect::from_center(
                         pos_to_screen(state, moving.pos, offset).into_fpoint(),
-                        TILE_SIZE * 1.01,
-                        TILE_SIZE * 1.01,
+                        TILE_SIZE,
+                        TILE_SIZE,
                     ),
                 )?;
             }
@@ -356,7 +415,7 @@ pub fn visualize_tile_hitboxes(
     data: &mut RenderData,
     width: usize,
     height: usize,
-    offset: f32,
+    offset: Vec2f,
 ) -> DrawResult {
     let state = RenderData::level_state(data.extracted_data)?;
 
@@ -415,7 +474,7 @@ impl Logic for BoardBase {
             if mouse_up {
                 let mouse_pos = Vec2f::new(mouse_pos.x, mouse_pos.y);
                 state.try_place_item(
-                    screen_to_pos(state, mouse_pos, 0.0).map(|f| f as i32),
+                    screen_to_pos(state, mouse_pos, Vec2f::new(0.0, 0.0)).map(|f| f as i32),
                     delta,
                 );
             }

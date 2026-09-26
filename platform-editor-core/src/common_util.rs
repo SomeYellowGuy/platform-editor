@@ -310,8 +310,19 @@ impl Rectf {
         (self.pos.y..=(self.pos.y + self.dimensions.y)).contains(&y)
     }
 
+    /// Inflates this `Rectf` in size, in both dimensions, by `by`.
     pub fn inflate(self, by: f32) -> Self {
         Rectf::from_dimensions(self.pos, self.dimensions.x + by, self.dimensions.y + by)
+    }
+
+    /// Shifts this `Rectf` by `by`.
+    pub fn shift(self, by: Vec2f) -> Self {
+        Rectf::new(self.pos + by, self.dimensions)
+    }
+
+    /// Gets the center of this [`Rectf`].
+    pub fn center(self) -> Vec2f {
+        self.pos + self.dimensions / 2.0
     }
 }
 

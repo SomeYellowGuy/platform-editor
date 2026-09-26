@@ -129,7 +129,7 @@ impl ShooterBullet {
             CollisionType::Tile(t) => {
                 self.is_immune_to_tiles() && matches!(t, Tile::Shooter { .. })
             }
-            CollisionType::Moving(_) | CollisionType::Border => false,
+            CollisionType::Moving(_) | CollisionType::Border | CollisionType::Lock => false,
         };
         if should_survive {
             self.pos += self.direction.unit_vec2f() * Self::SPEED * delta * self.speed_multiplier

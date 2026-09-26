@@ -1,7 +1,7 @@
 use crate::{
     common_util::Direction,
     level::{
-        LockColor,
+        FilledLockColorMap, LockColor,
         definition::{CollectibleType, Tile},
     },
 };
@@ -150,31 +150,23 @@ impl<T> CollectibleTextures<T> {
 }
 
 pub struct KeyTextures<T> {
-    pub red: T,
-    pub orange: T,
-    pub yellow: T,
-    pub green: T,
-    pub blue: T,
+    keys: FilledLockColorMap<T>,
+    pub keyhole: T,
 }
 
 impl<T> KeyTextures<T> {
-    pub fn get(&self, color: LockColor) -> &T {
-        match color {
-            LockColor::Red => &self.red,
-            LockColor::Orange => &self.orange,
-            LockColor::Yellow => &self.yellow,
-            LockColor::Green => &self.green,
-            LockColor::Blue => &self.blue,
+    pub fn new(red: T, orange: T, yellow: T, green: T, blue: T, keyhole: T) -> Self {
+        Self {
+            keys: FilledLockColorMap([red, orange, yellow, green, blue]),
+            keyhole,
         }
     }
 
+    pub fn get(&self, color: LockColor) -> &T {
+        self.keys.get(color)
+    }
+
     pub fn get_mut(&mut self, color: LockColor) -> &mut T {
-        match color {
-            LockColor::Red => &mut self.red,
-            LockColor::Orange => &mut self.orange,
-            LockColor::Yellow => &mut self.yellow,
-            LockColor::Green => &mut self.green,
-            LockColor::Blue => &mut self.blue,
-        }
+        self.keys.get_mut(color)
     }
 }

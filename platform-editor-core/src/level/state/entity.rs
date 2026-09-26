@@ -4,13 +4,17 @@ use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
     level::{
         definition::Tile,
-        state::{CollectibleState, Moving, TileCollision, TileState, moving::MovingHitboxSnapshot},
+        state::{
+            CollectibleState, LockState, Moving, TileCollision, TileState,
+            moving::MovingHitboxSnapshot,
+        },
     },
 };
 
 #[derive(Debug, Clone, Copy)]
 pub struct CollisionContext<'a> {
     pub tiles: &'a TileState,
+    pub locks: &'a LockState,
     pub moving: &'a [Moving],
     pub moving_snapshot: &'a MovingHitboxSnapshot,
 
@@ -20,12 +24,14 @@ pub struct CollisionContext<'a> {
 impl<'a> CollisionContext<'a> {
     pub fn new(
         tiles: &'a TileState,
+        locks: &'a LockState,
         moving: &'a [Moving],
         moving_snapshot: &'a MovingHitboxSnapshot,
         delta: f32,
     ) -> Self {
         Self {
             tiles,
+            locks,
             moving,
             moving_snapshot,
             delta,
@@ -35,6 +41,8 @@ impl<'a> CollisionContext<'a> {
     pub fn is_colliding(&self, hitbox: Rectf) -> CollisionType {
         if let Some(v) = self.colliding_with_moving(hitbox) {
             CollisionType::Moving(v)
+        } else if self.locks.is_colliding(hitbox) {
+            CollisionType::Lock
         } else {
             match self.tiles.tile_collision_with_hitbox(hitbox) {
                 TileCollision::Tile(t) => CollisionType::Tile(t.clone()),
@@ -81,6 +89,7 @@ pub enum CollisionType {
     None,
     Border,
     Tile(Tile),
+    Lock,
     Moving(Vec2f),
 }
 
