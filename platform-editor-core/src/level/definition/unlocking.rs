@@ -1,7 +1,7 @@
-use crate::common_util::Vec2f;
+use crate::{common_util::Rectf, level::LockColor};
 
 #[derive(Debug, Clone)]
 pub struct StoredLock {
-    pub pos: Vec2f,
-    pub size: Vec2f,
+    pub area: Rectf,
+    pub color: LockColor,
 }

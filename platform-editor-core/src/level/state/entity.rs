@@ -4,7 +4,7 @@ use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
     level::{
         definition::Tile,
-        state::{CollectibleState, Moving, TileCollision, TileState},
+        state::{CollectibleState, Moving, TileCollision, TileState, moving::MovingHitboxSnapshot},
     },
 };
 
@@ -12,15 +12,22 @@ use crate::{
 pub struct CollisionContext<'a> {
     pub tiles: &'a TileState,
     pub moving: &'a [Moving],
+    pub moving_snapshot: &'a MovingHitboxSnapshot,
 
     pub delta: f32,
 }
 
 impl<'a> CollisionContext<'a> {
-    pub fn new(tiles: &'a TileState, moving: &'a [Moving], delta: f32) -> Self {
+    pub fn new(
+        tiles: &'a TileState,
+        moving: &'a [Moving],
+        moving_snapshot: &'a MovingHitboxSnapshot,
+        delta: f32,
+    ) -> Self {
         Self {
             tiles,
             moving,
+            moving_snapshot,
             delta,
         }
     }
@@ -39,10 +46,10 @@ impl<'a> CollisionContext<'a> {
 
     /// Returns the velocity of the first moving platform the provided hitbox touches.
     pub fn colliding_with_moving(&self, hitbox: Rectf) -> Option<Vec2f> {
-        self.moving.iter().find_map(|m| {
+        self.moving.iter().enumerate().find_map(|(i, m)| {
             m.hitbox()
                 .intersects(hitbox)
-                .then(|| m.velocity(self.tiles, self.delta))
+                .then(|| m.velocity(i, self.tiles, self.moving_snapshot, self.delta))
         })
     }
 }
@@ -54,6 +61,7 @@ pub struct Entity {
     pub gravity_direction: Direction,
 
     is_falling: bool,
+    platform_move_vector: Option<Vec2f>,
 }
 
 impl Default for Entity {
@@ -63,6 +71,7 @@ impl Default for Entity {
             velocity: Default::default(),
             gravity_direction: Direction::Down,
             is_falling: Default::default(),
+            platform_move_vector: None,
         }
     }
 }
@@ -82,6 +91,41 @@ impl CollisionType {
 
     pub fn is_some(&self) -> bool {
         !self.is_none()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Controls(u8);
+
+impl Controls {
+    const JUMP_BIT: u8 = 4;
+    const RIGHT_BIT: u8 = 2;
+    const LEFT_BIT: u8 = 1;
+
+    pub fn new(left: bool, right: bool, jump: bool) -> Self {
+        let mut b = 0;
+        if left {
+            b |= Self::LEFT_BIT;
+        }
+        if right {
+            b |= Self::RIGHT_BIT;
+        }
+        if jump {
+            b |= Self::JUMP_BIT;
+        }
+        Controls(b)
+    }
+
+    pub fn left(self) -> bool {
+        (self.0 & Self::LEFT_BIT) != 0
+    }
+
+    pub fn right(self) -> bool {
+        (self.0 & Self::RIGHT_BIT) != 0
+    }
+
+    pub fn jump(self) -> bool {
+        (self.0 & Self::JUMP_BIT) != 0
     }
 }
 
@@ -113,26 +157,40 @@ impl Entity {
         self.gravity_direction.unit_vec2f() * Self::GRAVITY
     }
 
+    /// Updates this entity to take the velocity of the first moving platform it is
+    /// found to touch (or almost touch).
+    ///
+    /// This velocity, if any, will be reflected in [`Entity::tick`].
+    pub fn update_platform_move_vector(&mut self, context: CollisionContext) {
+        // Check for moving platform collisions.
+        self.platform_move_vector = context.colliding_with_moving(self.hitbox().inflate(0.01));
+    }
+
     /// Ticks this entity.
     ///
     /// Returns whether this entity is still alive.
-    pub fn tick(&mut self, context: CollisionContext) -> bool {
+    pub fn tick(&mut self, controls: Controls, context: CollisionContext) -> bool {
+        // If this entity is touching a moving platform, make it move
+        // along its instantaneous velocity.
+        if let Some(v) = self.platform_move_vector {
+            self.pos += v;
+            self.platform_move_vector = None;
+        }
+
+        // Move the entity.
+        self.move_in_steps(context);
+
         // Apply gravity.
         self.velocity += self.gravity() * context.delta;
+
+        // Apply controls.
+        self.apply_controls(controls, context.delta);
 
         // Apply friction.
         let non_gravity_component = self
             .velocity
             .get_mut(self.gravity_direction.bidirection().other());
         *non_gravity_component *= 0.85_f32.powf(context.delta * 30.0);
-
-        // Check if the entity is too close to the void, or is touching something deadly.
-        let alive =
-            !self.is_touching_void(context.tiles) && !self.is_touching_deadly_area(context.tiles);
-
-        if !alive {
-            return false;
-        }
 
         // Check for any compression that might defeat this entity.
         if self.is_colliding(context).is_some() {
@@ -145,22 +203,15 @@ impl Entity {
             }
         }
 
-        // Move the entity.
-        self.move_in_steps(context);
-
-        // Check for moving platform collisions.
-        if let Some(v) = self.colliding_with_moving(context) {
-            self.pos += v;
-        }
-
-        alive
+        // Check if the entity is too close to the void, or is touching something deadly.
+        !self.is_touching_void(context.tiles) && !self.is_touching_deadly_area(context.tiles)
     }
 
-    pub fn apply_controls(&mut self, left: bool, right: bool, jump: bool, delta: f32) {
-        let horizontal = -(left as i8) + (right as i8);
+    fn apply_controls(&mut self, controls: Controls, delta: f32) {
+        let horizontal = -(controls.left() as i8) + (controls.right() as i8);
         self.velocity.x += horizontal as f32 * delta * Self::MOVE_VELOCITY;
 
-        if !self.is_falling && jump {
+        if !self.is_falling && controls.jump() {
             let new_velocity = -Self::JUMP_VELOCITY * self.gravity_multiplier();
             let gravity_component = self.velocity.get_mut(self.gravity_direction.bidirection());
             *gravity_component = new_velocity;
@@ -216,7 +267,7 @@ impl Entity {
     /// Checks for collisions with moving platforms, returning the velocity
     /// of the first moving platform to be found touching this entity.
     pub fn colliding_with_moving(&self, context: CollisionContext) -> Option<Vec2f> {
-        context.colliding_with_moving(self.hitbox().inflate(0.001))
+        context.colliding_with_moving(self.hitbox())
     }
 
     pub fn is_touching_deadly_area(&self, tiles: &TileState) -> bool {
@@ -244,7 +295,7 @@ impl Entity {
         max_loops: usize,
     ) -> Option<Vec2f> {
         const INITIAL_DELTA: f32 = 0.1;
-        const DIRECTIONS_PER_LOOP: usize = 16;
+        const DIRECTIONS_PER_LOOP: usize = 32;
 
         pos.y -= INITIAL_DELTA;
         if context.is_colliding(Self::hitbox_from_pos(pos)).is_none() {
@@ -261,12 +312,16 @@ impl Entity {
         for _ in 0..max_loops {
             for _ in 0..DIRECTIONS_PER_LOOP {
                 let target = pos + Vec2f::new(angle.cos(), angle.sin()) * distance;
-                if context.is_colliding(Self::hitbox_from_pos(pos)).is_none() {
+                if context
+                    .is_colliding(Self::hitbox_from_pos(target))
+                    .is_none()
+                {
                     return Some(target);
                 }
                 angle += 2.0 * PI / DIRECTIONS_PER_LOOP as f32;
             }
             distance += 0.025;
+            println!("{distance}")
         }
 
         None

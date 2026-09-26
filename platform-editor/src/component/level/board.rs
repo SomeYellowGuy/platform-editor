@@ -11,7 +11,8 @@ use platform_editor_core::{
     level::{
         definition::Tile,
         state::{
-            CollectibleState, Entity, LevelState, LevelStateOutcome, ShooterBullet, ShooterState,
+            CollectibleState, Controls, Entity, LevelState, LevelStateOutcome, ShooterBullet,
+            ShooterState,
         },
     },
     screen::Screen,
@@ -215,8 +216,8 @@ impl Render for BoardBase {
                     None,
                     FRect::from_center(
                         pos_to_screen(state, moving.pos, offset).into_fpoint(),
-                        TILE_SIZE,
-                        TILE_SIZE,
+                        TILE_SIZE * 1.01,
+                        TILE_SIZE * 1.01,
                     ),
                 )?;
             }
@@ -419,7 +420,7 @@ impl Logic for BoardBase {
                 );
             }
 
-            state.tick(delta)
+            state.tick(Controls::new(left, right, jump), delta)
         };
 
         if finished {
@@ -466,9 +467,6 @@ impl Logic for BoardBase {
                 let state = data.app_data.level_state.as_mut().unwrap();
 
                 let go = left || right || jump;
-
-                state.player.apply_controls(left, right, jump, delta);
-
                 if go {
                     let (instant, first_go) = state.go();
                     if first_go {

@@ -12,12 +12,13 @@ use crate::{
         StarCondition,
         definition::{CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, Tile},
         scratch::StoredScratchLevel,
+        state::moving::MovingHitboxSnapshot,
     },
 };
 
 pub use {
     collectible::CollectibleState,
-    entity::{CollisionContext, Entity},
+    entity::{CollisionContext, Controls, Entity},
     moving::Moving,
     shooter::{ShooterBullet, ShooterState},
 };
@@ -196,21 +197,22 @@ impl LevelState {
         self.finish_instant.is_some()
     }
 
-    pub fn tick(&mut self, delta: f32) -> LevelStateOutcome {
+    pub fn tick(&mut self, player_controls: Controls, delta: f32) -> LevelStateOutcome {
         // Tick the tile state.
         self.tile_state.tick(delta);
 
+        // Get a snapshot of all moving platform hitboxes.
+        let snapshot = MovingHitboxSnapshot::new(&self.moving);
         // Tick moving platforms.
-        for moving in &mut self.moving {
-            moving.tick(&self.tile_state, delta);
+        for (i, moving) in &mut self.moving.iter_mut().enumerate() {
+            moving.tick(i, &self.tile_state, &snapshot, delta);
         }
 
-        let collision_context = CollisionContext::new(&self.tile_state, &self.moving, delta);
+        let collision_context =
+            CollisionContext::new(&self.tile_state, &self.moving, &snapshot, delta);
 
-        // Check if the player touched the void.
-        if !self.player.tick(collision_context) {
-            return LevelStateOutcome::Lose;
-        }
+        // Update the moving platform vectors for the player.
+        self.player.update_platform_move_vector(collision_context);
 
         // Tick shooter bullets.
         if self
@@ -229,6 +231,11 @@ impl LevelState {
             if let Some(bullet) = shooter.tick(delta, self.player.pos) {
                 self.shooter_bullets.push(bullet);
             }
+        }
+
+        // Tick the player.
+        if !self.player.tick(player_controls, collision_context) {
+            return LevelStateOutcome::Lose;
         }
 
         // Check for any collected collectibles.
@@ -341,7 +348,9 @@ impl LevelState {
                 }
                 self.moving.push(moving_platform);
 
-                let context = CollisionContext::new(&self.tile_state, &self.moving, delta);
+                let snapshot = MovingHitboxSnapshot::new(&self.moving);
+                let context =
+                    CollisionContext::new(&self.tile_state, &self.moving, &snapshot, delta);
                 // Check if the player is colliding with the moving platform.
                 if self.player.colliding_with_moving(context).is_some() {
                     // Reverse the placement.
