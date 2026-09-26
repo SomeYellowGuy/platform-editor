@@ -1,17 +1,18 @@
+mod collectible;
+mod flag;
+mod item;
+mod moving;
+mod tile;
+mod unlocking;
+
+pub use collectible::{Collectible, CollectibleType};
+pub use flag::FlagState;
+pub use item::{Item, ItemPlaceOutcome, ItemStack};
+pub use moving::MovingBlockItem;
+pub use tile::Tile;
+pub use unlocking::StoredLock;
+
 use crate::common_util::Direction;
-
-pub mod definition;
-pub mod scratch;
-pub mod state;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LockColor {
-    Red,
-    Orange,
-    Yellow,
-    Green,
-    Blue,
-}
 
 /// An extra condition for a star to be collected when a level is finished.
 #[derive(Debug, Clone)]

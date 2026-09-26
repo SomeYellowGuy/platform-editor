@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::{
     common_util::{Bidirection, Direction, Rectf, Vec2f},
     level::{
-        Tile,
+        definition::Tile,
         state::{CollisionContext, entity::CollisionType},
     },
 };

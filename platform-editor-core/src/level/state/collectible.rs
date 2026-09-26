@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use crate::{
     common_util::Vec2f,
-    level::{Collectible, CollectibleType},
+    level::definition::{Collectible, CollectibleType},
 };
 
 #[derive(Debug, Clone)]

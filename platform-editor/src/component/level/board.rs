@@ -9,7 +9,7 @@ use platform_editor_core::{
         },
     },
     level::{
-        Tile,
+        definition::Tile,
         state::{
             CollectibleState, Entity, LevelState, LevelStateOutcome, ShooterBullet, ShooterState,
         },

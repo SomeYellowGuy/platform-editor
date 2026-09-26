@@ -9,7 +9,8 @@ use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f, Vec2i},
     component::level::end_dialog::StarStatus,
     level::{
-        CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, StarCondition, Tile,
+        StarCondition,
+        definition::{CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, Tile},
         scratch::StoredScratchLevel,
     },
 };

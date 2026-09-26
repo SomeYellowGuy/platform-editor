@@ -1,6 +1,9 @@
 use crate::{
     common_util::{Direction, Vec2f, digit_count},
-    level::{Collectible, CollectibleType, FlagState, ItemStack, LockColor, StarCondition, Tile},
+    level::{
+        LockColor, StarCondition,
+        definition::{Collectible, CollectibleType, FlagState, ItemStack, Tile},
+    },
 };
 
 pub mod levels;

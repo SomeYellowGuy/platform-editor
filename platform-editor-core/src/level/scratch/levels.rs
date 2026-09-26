@@ -1,7 +1,7 @@
 use crate::{
     common_util::{Direction, Vec2, Vec2f},
     level::{
-        Item, ItemStack, MovingBlockItem,
+        definition::{Item, ItemStack, MovingBlockItem},
         scratch::{
             ScratchCollectible as Collectible, ScratchCollectibleType as CollectibleType,
             ScratchLockColor as LockColor, ScratchStarCondition as StarCondition,

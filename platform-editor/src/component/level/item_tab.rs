@@ -1,5 +1,5 @@
 use platform_editor_core::{
-    common_util::Vec2f, component::level::ItemTabBase, level::ItemStack, screen::Screen,
+    common_util::Vec2f, component::level::ItemTabBase, level::definition::ItemStack, screen::Screen,
 };
 use sdl3::{
     mouse::MouseButton,

@@ -1,6 +1,9 @@
 use crate::{
     common_util::Direction,
-    level::{CollectibleType, LockColor, Tile},
+    level::{
+        LockColor,
+        definition::{CollectibleType, Tile},
+    },
 };
 
 /// A structure that may or may not hold a texture or image for each direction.

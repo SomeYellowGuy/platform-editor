@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use crate::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
     level::{
-        Tile,
+        definition::Tile,
         state::{CollectibleState, Moving, TileCollision, TileState},
     },
 };

@@ -1,7 +1,7 @@
 use crate::{
     common_util::{Bidirection, Direction, Rectf, Vec2f},
     level::{
-        MovingBlockItem,
+        definition::MovingBlockItem,
         state::{CollisionContext, TileState},
     },
 };
