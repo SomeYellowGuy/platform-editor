@@ -1,10 +1,14 @@
+use std::fs::{self, File};
+use std::io::Cursor;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use platform_editor_core::LevelSave;
 use platform_editor_core::common_util::Vec2f;
 use platform_editor_core::component::ComponentMapQueryType;
 use platform_editor_core::level::state::LevelState;
 use platform_editor_core::options::Options;
+use platform_editor_core::save::campaign::LevelSave;
+use platform_editor_core::save::{LEVEL_SAVE_LOCATION, ReadFrom, WriteTo};
 use platform_editor_core::screen::{Screen, ScreenManager, SharedTransitionData, TransitionCall};
 use sdl3::EventPump;
 use sdl3::event::Event;
@@ -35,6 +39,10 @@ pub const HEIGHT: u32 = 720;
 
 /// A priority for components with no logic.
 pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
+
+// Names for the pref path.
+const ORGANIZATION_NAME: &str = "SomeYellowGuy";
+const APP_NAME: &str = "Platform Editor";
 
 pub type ComponentMap = platform_editor_core::component::ComponentMap<Component>;
 pub type QueuedComponent = platform_editor_core::component::QueuedComponent<Component>;
@@ -84,9 +92,23 @@ pub fn main() {
         .event_pump()
         .expect("could not obtain the event pump");
 
+    tracing_subscriber::fmt::init();
+
+    let pref_path = sdl3::filesystem::get_pref_path(ORGANIZATION_NAME, APP_NAME);
+
+    let pref_path = match pref_path {
+        Ok(path) => Some(path),
+        Err(error) => {
+            tracing::warn!(
+                "Could not get the pref path: {error}. The game will use a non-persistent save."
+            );
+            None
+        }
+    };
+
     let mut app = App { event_pump, canvas };
 
-    app.run(textures, font)
+    app.run(textures, font, pref_path)
 }
 
 /// Represents the app.
@@ -113,6 +135,9 @@ pub struct ExtraAppData {
     present_mode: PresentMode,
     /// The last Y mouse position, if any, which is used for scrolling in the level select.
     last_y_mouse_pos: Option<f32>,
+
+    /// The pref path.
+    pref_path: Option<PathBuf>,
 }
 
 impl Default for ExtraAppData {
@@ -120,6 +145,7 @@ impl Default for ExtraAppData {
         Self {
             present_mode: PresentMode::Capped(60),
             last_y_mouse_pos: None,
+            pref_path: None,
         }
     }
 }
@@ -129,6 +155,7 @@ pub struct ExtractedData<'i> {
     pub playing_level: usize,
     pub level_state: Option<&'i LevelState>,
     pub mouse_pos: Vec2f,
+    pub level_save: &'i LevelSave,
 }
 
 impl App {
@@ -151,17 +178,51 @@ impl App {
         };
     }
 
-    pub fn run(&mut self, mut textures: Textures, font: Font<'static>) {
+    pub fn load_data(pref_path: &Path) -> Option<LevelSave> {
+        let Ok(level_save_data) = fs::read(pref_path.join(LEVEL_SAVE_LOCATION)) else {
+            tracing::info!("Creating a new level progress save.");
+            return None;
+        };
+
+        let mut cursor = Cursor::new(level_save_data.as_slice());
+        match LevelSave::read(&mut cursor) {
+            Ok(data) => {
+                tracing::info!("Loaded the level progress save data successfully!");
+                Some(data)
+            }
+            Err(error) => {
+                tracing::info!("Could not load the level progress save: {error}");
+                None
+            }
+        }
+    }
+
+    pub fn save_level_save(app_data: &AppData, pref_path: &Path) -> std::io::Result<()> {
+        let mut file = File::create(pref_path.join(LEVEL_SAVE_LOCATION))?;
+        app_data.level.write(&mut file)?;
+
+        Ok(())
+    }
+
+    pub fn run(&mut self, mut textures: Textures, font: Font<'static>, pref_path: Option<PathBuf>) {
+        // Load our save data.
+        let level_save = pref_path
+            .as_ref()
+            .and_then(|p| Self::load_data(p))
+            .unwrap_or_default();
+
         let mut data: AppData = AppData {
             options: Options::default(),
             start: Instant::now(),
             extra: ExtraAppData::default(),
             level_select_scroll: screen::STARTING_LEVEL_SELECT_SCROLL,
             level_select_scroll_velocity: 0.0,
-            level: LevelSave::new(),
+            level: level_save,
             previous_selected_item: None,
             level_state: None,
         };
+
+        data.extra.pref_path = pref_path;
 
         let mut components = ComponentMap::new();
 
@@ -306,6 +367,7 @@ impl App {
             playing_level: app_data.level.playing_level,
             level_state: app_data.level_state.as_ref(),
             mouse_pos,
+            level_save: &app_data.level,
         };
 
         if let Some(e) = Self::render(
@@ -319,7 +381,7 @@ impl App {
         )
         .err()
         {
-            println!("Error occured during rendering: {e}");
+            tracing::error!("An error occured during rendering: {e}");
         }
 
         self.canvas.present();

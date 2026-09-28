@@ -26,7 +26,7 @@ fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> O
     if let Ok(t) = creator.load_texture(name) {
         Some(t)
     } else {
-        println!("Could not load texture: {name}");
+        tracing::error!("Could not load texture: {name}");
         None
     }
 }

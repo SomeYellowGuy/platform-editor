@@ -7,3 +7,6 @@ edition = "2024"
 platform-editor-core.workspace = true
 sdl3.workspace = true
 sdl3-sys.workspace = true
+
+tracing.workspace = true
+tracing-subscriber.workspace = true

@@ -2,7 +2,8 @@
 
 use std::{
     f32::consts::PI,
-    ops::{Add, Div, Mul, Neg, Sub},
+    ops::{Add, Div, Mul, Neg, Range, Sub},
+    time::Instant,
 };
 
 /// Returns the number of digits of a `usize`.
@@ -390,4 +391,47 @@ impl Bidirection {
 /// Helper function to convert 3 RGB values to a single packed RGBA color.
 pub const fn rgb(red: u8, green: u8, blue: u8) -> u32 {
     0xff00_0000 | (((red as u32) << 16) + ((green as u32) << 8) + blue as u32)
+}
+
+/// A simple RNG for casual purposes.
+#[derive(Debug, Clone, Copy)]
+pub struct SimpleRng {
+    state: u32,
+}
+
+impl Default for SimpleRng {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SimpleRng {
+    /// Initializes this RNG.
+    pub fn new() -> Self {
+        let seed = Instant::now().elapsed().as_nanos() as u32;
+        // Our seed cannot be 0.
+        let safe_seed = if seed == 0 { 1 } else { seed };
+        Self { state: safe_seed }
+    }
+
+    /// Generates a pseudo-random `u32` across the entire range (`0..=u32::MAX`).
+    pub fn next_u32(&mut self) -> u32 {
+        let mut x = self.state;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        self.state = x;
+        x
+    }
+
+    /// Generates a pseudo-random `f32` across the range `0..=1`.
+    pub fn next_f32(&mut self) -> f32 {
+        const SCALE: f32 = 1.0 / (u32::MAX as f32);
+        self.next_u32() as f32 * SCALE
+    }
+
+    /// Generates a pseudo-random `f32` in the given range.
+    pub fn next_f32_in_range(&mut self, range: &Range<f32>) -> f32 {
+        range.start + self.next_f32() * (range.end - range.start)
+    }
 }

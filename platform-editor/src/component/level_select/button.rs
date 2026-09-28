@@ -90,9 +90,11 @@ impl Render for LevelSelectButtonBase {
             digit_pos.x -= 60.0 * NUMBER_SCALE;
         }
 
+        let star_byte = data.extracted_data.level_save.bits(self.level);
+
         // 3: draw the stars
-        for star_offset in &STAR_OFFSETS {
-            let collected = false;
+        for (i, star_offset) in STAR_OFFSETS.iter().enumerate() {
+            let collected = (star_byte & (1 << i)) != 0;
             let star_pos = {
                 let mut pos = pos;
                 pos.x += star_offset.0.0;

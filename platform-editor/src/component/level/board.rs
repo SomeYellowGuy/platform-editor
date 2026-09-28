@@ -5,7 +5,7 @@ use platform_editor_core::{
         level::{
             BoardBase,
             bottom_bar::BottomBarBase,
-            end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType},
+            end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType, StarStatus},
         },
     },
     level::{
@@ -26,7 +26,7 @@ use sdl3::{
 };
 
 use crate::{
-    HEIGHT, WIDTH,
+    App, HEIGHT, WIDTH,
     component::Component,
     logic::Logic,
     render::{DrawResult, Render, RenderData},
@@ -509,6 +509,9 @@ impl Logic for BoardBase {
                 // Finish the level. Add an end dialog.
                 state.mark_finished();
 
+                // Save the star data.
+                let end_dialog_base = EndDialogBase::from_level_state(state);
+
                 let displayed_time = state
                     .go_instant
                     .unwrap()
@@ -518,12 +521,6 @@ impl Logic for BoardBase {
                     as u32;
 
                 data.queued.add_event(Event::LevelFinish(displayed_time));
-                data.queued.add_component(QueuedComponent {
-                    id: ComponentId::EndDialog,
-                    component: Component::EndDialog(EndDialogBase::from_level_state(state)),
-                    render_priority: 20,
-                    logic_priority: 10,
-                });
 
                 for ty in EndDialogButtonType::ALL {
                     data.queued.add_component(QueuedComponent {
@@ -533,6 +530,25 @@ impl Logic for BoardBase {
                         logic_priority: 20,
                     });
                 }
+
+                let byte = StarStatus::to_bits(&end_dialog_base.star_statuses);
+                data.app_data
+                    .level
+                    .award(data.app_data.level.playing_level, byte);
+                if let Some(ref path_pref) = data.app_data.extra.pref_path {
+                    match App::save_level_save(data.app_data, path_pref) {
+                        Ok(()) => tracing::info!("Successfully saved the level progress data!"),
+                        Err(error) => tracing::error!(
+                            "An error occured while trying to save the level progress data: {error}"
+                        ),
+                    }
+                }
+                data.queued.add_component(QueuedComponent {
+                    id: ComponentId::EndDialog,
+                    component: Component::EndDialog(end_dialog_base),
+                    render_priority: 20,
+                    logic_priority: 10,
+                });
             }
             LevelStateOutcome::Lose => {
                 // Reset the level by calling a transition.

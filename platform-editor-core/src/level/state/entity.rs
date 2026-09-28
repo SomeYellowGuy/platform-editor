@@ -1,7 +1,7 @@
-use std::f32::consts::PI;
+use std::{f32::consts::PI, ops::Range};
 
 use crate::{
-    common_util::{Direction, Rectf, Vec2, Vec2f},
+    common_util::{Direction, Rectf, SimpleRng, Vec2, Vec2f},
     level::{
         EnemyType,
         definition::Tile,
@@ -64,6 +64,21 @@ impl<'a> CollisionContext<'a> {
 }
 
 #[derive(Debug, Clone)]
+pub struct EntityRng {
+    rng: SimpleRng,
+    range: Range<f32>,
+}
+
+impl EntityRng {
+    pub fn new(range: Range<f32>) -> Self {
+        Self {
+            rng: SimpleRng::new(),
+            range,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Entity {
     pub pos: Vec2f,
     pub velocity: Vec2f,
@@ -72,6 +87,8 @@ pub struct Entity {
     is_falling: bool,
     platform_move_vector: Option<Vec2f>,
     coyote_time_left: f32,
+
+    random_velocity_rng: Option<EntityRng>,
 }
 
 impl Default for Entity {
@@ -83,6 +100,7 @@ impl Default for Entity {
             is_falling: Default::default(),
             platform_move_vector: None,
             coyote_time_left: Self::COYOTE_TIME,
+            random_velocity_rng: None,
         }
     }
 }
@@ -160,6 +178,13 @@ impl Entity {
     /// The coyote time provided to an entity for jumping.
     pub const COYOTE_TIME: f32 = 0.1;
 
+    /// Resets the internal fields of this entity.
+    pub fn reset(&mut self) {
+        self.is_falling = true;
+        self.platform_move_vector = None;
+        self.coyote_time_left = 0.0;
+    }
+
     pub fn hitbox(&self) -> Rectf {
         Self::hitbox_from_pos(self.pos)
     }
@@ -224,7 +249,13 @@ impl Entity {
 
     fn apply_controls(&mut self, controls: Controls, delta: f32) {
         let horizontal = -(controls.left() as i8) + (controls.right() as i8);
-        self.velocity.x += horizontal as f32 * delta * Self::MOVE_VELOCITY;
+        let move_velocity = if let Some(entity_rng) = &mut self.random_velocity_rng {
+            entity_rng.rng.next_f32_in_range(&entity_rng.range)
+        } else {
+            1.0
+        } * Self::MOVE_VELOCITY;
+
+        self.velocity.x += horizontal as f32 * delta * move_velocity;
 
         if !self.is_falling {
             self.coyote_time_left = Self::COYOTE_TIME
@@ -381,6 +412,7 @@ impl Enemy {
             ty,
             entity: Entity {
                 pos,
+                random_velocity_rng: Some(EntityRng::new(0.6..1.0)),
                 ..Default::default()
             },
             last_x_pos: None,

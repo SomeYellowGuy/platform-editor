@@ -27,6 +27,22 @@ pub struct StarStatus {
     pub condition: StarCondition,
 }
 
+impl StarStatus {
+    /// Converts an array of star statuses into a packed byte, assuming that the first
+    /// star (the flag finish star) is collected.
+    pub fn to_bits(statuses: &[StarStatus]) -> u8 {
+        let mut bits = 1;
+        let checked_statuses = (std::mem::size_of::<u8>() * 8).min(statuses.len());
+        for (i, status) in statuses.iter().enumerate().take(checked_statuses) {
+            if status.collected {
+                bits |= 1 << (i + 1);
+            }
+        }
+
+        bits
+    }
+}
+
 impl EndDialogBase {
     pub fn from_level_state(state: &LevelState) -> Self {
         Self {

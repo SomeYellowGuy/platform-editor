@@ -66,7 +66,7 @@ impl ButtonType {
             // Check the first unbeat level.
             let mut i = 0;
             while i < levels::LEVEL_COUNT {
-                if data.level.stars[i] == 0 {
+                if data.level.is_beat(i) {
                     break;
                 }
                 i += 1;

@@ -263,6 +263,7 @@ impl LevelState {
         self.tile_state.tiles = tiles;
         self.player.pos = level.start_pos;
         self.player.velocity = Vec2f::new(0.0, 0.0);
+        self.player.reset();
         self.enemies = level
             .enemies
             .iter()
