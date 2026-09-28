@@ -36,6 +36,10 @@ impl LevelSave {
     pub fn award(&mut self, level: usize, stars: u8) {
         self.stars[level] |= stars
     }
+
+    pub fn stars_collected(&self) -> u32 {
+        self.stars.iter().map(|num| num.count_ones()).sum()
+    }
 }
 
 impl Default for LevelSave {

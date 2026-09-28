@@ -79,6 +79,7 @@ pub struct LevelSelectTextures<'c> {
     pub stars: Texture<'c>,
     pub perfect_star_highlight: Texture<'c>,
     pub digits: Texture<'c>,
+    pub golden_digits: Texture<'c>,
     pub locked: Texture<'c>,
 
     pub header_text: DynamicText<'c>,
@@ -95,6 +96,7 @@ impl<'c> LevelSelectTextures<'c> {
                 "assets/gfx/level_select/perfect_star_highlight.png",
             )?,
             digits: load_texture(creator, "assets/gfx/level_select/digits.png")?,
+            golden_digits: load_texture(creator, "assets/gfx/level_select/golden_digits.png")?,
             locked: load_texture(creator, "assets/gfx/level_select/locked.png")?,
             header_text: DynamicText::new(creator),
             stars_text: DynamicText::new(creator),

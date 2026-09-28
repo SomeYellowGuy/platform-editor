@@ -1,5 +1,5 @@
 use platform_editor_core::{
-    common_util::{Rectf, Vec2, Vec2f},
+    common_util::{Direction, Rectf, Vec2, Vec2f},
     component::{
         ComponentId, Event, QueuedComponent,
         level::{
@@ -36,7 +36,7 @@ use crate::{
 /// Whether to visualize the collision and deadly hitboxes of tiles.
 pub const VISUALIZE_TILE_HITBOXES: bool = false;
 
-pub const TILE_SIZE: f32 = 60.0;
+pub const TILE_SIZE: f32 = 61.0;
 pub const COLLECTIBLE_SIZE: f32 = 55.0;
 pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 28.0);
 
@@ -404,14 +404,18 @@ impl Render for BoardBase {
         for shooter in &state.shooters {
             if let Some(glow_alpha) = shooter.glow() {
                 let size_multiplier = TILE_SIZE * (0.5 + 1.0 - glow_alpha);
+                let glow_offset = match shooter.direction {
+                    Direction::Up | Direction::Down => Vec2f::new(0.0, -2.0),
+                    Direction::Left => Vec2f::new(2.0, -2.0),
+                    Direction::Right => Vec2f::new(-2.0, -2.0),
+                };
                 copy(
                     data.canvas,
                     (alpha as f32 * glow_alpha) as u8,
                     &mut data.textures.level.bullet_glow,
                     None,
                     FRect::from_center(
-                        (pos_to_screen(state, shooter.pos, offset) - Vec2f::new(2.0, 2.0))
-                            .into_fpoint(),
+                        (pos_to_screen(state, shooter.pos, offset) + glow_offset).into_fpoint(),
                         ShooterState::GLOW_SIZE * size_multiplier,
                         ShooterState::GLOW_SIZE * size_multiplier,
                     ),

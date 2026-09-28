@@ -5,13 +5,15 @@ use platform_editor_core::{
 };
 use sdl3::{
     mouse::MouseButton,
-    rect::Rect,
     render::{FPoint, FRect},
 };
 
 use crate::{
-    HEIGHT, component::level_select::header::HEADER_HEIGHT, logic::Logic, render::Render,
-    util::FRectExt,
+    HEIGHT,
+    component::level_select::header::HEADER_HEIGHT,
+    logic::Logic,
+    render::Render,
+    util::{DualImageDimensions, FRectExt},
 };
 
 pub const SPACING: f32 = 220.0;
@@ -31,9 +33,9 @@ fn normal_pos(base: &LevelSelectButtonBase, scroll: f32) -> FPoint {
 }
 
 const STAR_OFFSETS: [((f32, f32), f64); 3] = [
-    ((-66.0, 38.0), 20.0),
+    ((-65.0, 42.0), 20.0),
     ((0.0, 60.0), 0.0),
-    ((66.0, 38.0), -20.0),
+    ((65.0, 42.0), -20.0),
 ];
 
 impl Render for LevelSelectButtonBase {
@@ -51,10 +53,23 @@ impl Render for LevelSelectButtonBase {
             0.0
         };
 
-        // 1: draw the level button itself
+        let star_byte = data.extracted_data.level_save.bits(self.level);
+        let all_stars_collected = star_byte == ((1 << STAR_OFFSETS.len()) - 1);
+
+        let level_buttons = &data.textures.level_select.level_buttons;
+        let level_button_dimensions = DualImageDimensions::new(level_buttons);
+        let level_button_rect = level_button_dimensions.frect(all_stars_collected);
+
+        let digits_texture = if all_stars_collected {
+            &mut data.textures.level_select.golden_digits
+        } else {
+            &mut data.textures.level_select.digits
+        };
+
+        // 1: Draw the level button itself
         data.canvas.copy_ex(
             &data.textures.level_select.level_buttons,
-            Rect::new(0, 0, 90, 90),
+            level_button_rect,
             FRect::from_center(pos, SIDE * scale_multiplier, SIDE * scale_multiplier),
             rotation,
             None,
@@ -62,9 +77,10 @@ impl Render for LevelSelectButtonBase {
             false,
         )?;
 
-        // 2: draw the level number
+        // 2: Draw the level number
         let mut number = self.level + 1;
         const NUMBER_SCALE: f32 = 0.85;
+        const PERFECT_STAR_HIGHLIGHT_SCALE: f32 = 1.8;
         let mut digit_pos = pos;
         digit_pos.y -= 10.0;
         digit_pos.x += 30.0 * NUMBER_SCALE * (common_util::digit_count(number) - 1) as f32;
@@ -73,28 +89,40 @@ impl Render for LevelSelectButtonBase {
             let digit = number % 10;
             number /= 10;
             // Draw digits for the level.
-            // The original texturte is 600 by 80.
-            data.textures
-                .level_select
-                .digits
-                .set_color_mod(120, 120, 120);
-            data.canvas.copy_ex(
-                &data.textures.level_select.digits,
+            // The original texture is 600 by 80.
+            digits_texture.set_color_mod(120, 120, 120);
+            data.canvas.copy(
+                digits_texture,
                 FRect::new(60.0 * digit as f32, 0.0, 60.0, 80.0),
                 FRect::from_center(digit_pos, 60.0 * NUMBER_SCALE, 80.0 * NUMBER_SCALE),
-                0.0,
-                None,
-                false,
-                false,
             )?;
             digit_pos.x -= 60.0 * NUMBER_SCALE;
         }
 
-        let star_byte = data.extracted_data.level_save.bits(self.level);
+        // 3: Draw the perfect star highlight, if required
+        if all_stars_collected {
+            let mut highlight_pos = pos;
+            highlight_pos.x -= 2.0;
+            highlight_pos.y += 50.0;
+            data.canvas.copy(
+                &data.textures.level_select.perfect_star_highlight,
+                None,
+                FRect::from_center(
+                    highlight_pos,
+                    120.0 * PERFECT_STAR_HIGHLIGHT_SCALE,
+                    53.0 * PERFECT_STAR_HIGHLIGHT_SCALE,
+                ),
+            )?;
+        }
 
-        // 3: draw the stars
+        let star_dimensions = DualImageDimensions::new(&data.textures.level_select.stars);
+
+        const STAR_SIZE: f32 = 70.0;
+
+        // 4: draw the stars
         for (i, star_offset) in STAR_OFFSETS.iter().enumerate() {
             let collected = (star_byte & (1 << i)) != 0;
+            let star_src = star_dimensions.frect(collected);
             let star_pos = {
                 let mut pos = pos;
                 pos.x += star_offset.0.0;
@@ -103,8 +131,8 @@ impl Render for LevelSelectButtonBase {
             };
             data.canvas.copy_ex(
                 &data.textures.level_select.stars,
-                FRect::new(if collected { 40.0 } else { 0.0 }, 0.0, 40.0, 40.0),
-                FRect::from_center(star_pos, 75.0, 75.0),
+                star_src,
+                FRect::from_center(star_pos, STAR_SIZE, STAR_SIZE),
                 star_offset.1,
                 None,
                 false,

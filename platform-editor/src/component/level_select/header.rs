@@ -5,7 +5,9 @@ use sdl3::{
     render::{FPoint, FRect},
 };
 
-use crate::{HEIGHT, WIDTH, logic::Logic, render::Render, textures::TextAlignment};
+use crate::{
+    HEIGHT, WIDTH, logic::Logic, render::Render, textures::TextAlignment, util::DualImageDimensions,
+};
 
 pub const HEADER_HEIGHT: u32 = 90;
 
@@ -45,10 +47,13 @@ impl Render for LevelSelectHeaderBase {
 
         const STAR_INFO_OFFSET: f32 = 270.0;
 
+        let star_dimensions = DualImageDimensions::new(&data.textures.level_select.stars);
+        let star_src = star_dimensions.frect(true);
+
         // Draw the star icon.
         data.canvas.copy_ex(
             &data.textures.level_select.stars,
-            FRect::new(40.0, 0.0, 40.0, 40.0),
+            star_src,
             FRect::new(
                 (WIDTH / 2) as f32 + STAR_INFO_OFFSET,
                 7.0 - header_offset as f32,
@@ -61,11 +66,14 @@ impl Render for LevelSelectHeaderBase {
             false,
         )?;
 
+        let stars = data.extracted_data.level_save.stars_collected();
+
         // Draw the star count.
-        data.textures
-            .level_select
-            .stars_text
-            .update(data.canvas, data.font, "0/90")?;
+        data.textures.level_select.stars_text.update(
+            data.canvas,
+            data.font,
+            format!("{stars}/90"),
+        )?;
 
         let star_count_pos = FPoint::new((WIDTH / 2) as f32 + STAR_INFO_OFFSET + 90.0, text_y);
         data.textures.level_select.stars_text.draw(

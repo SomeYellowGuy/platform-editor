@@ -96,16 +96,25 @@ impl Render for ButtonBase {
             false,
             false,
         )?;
+
+        let icons_third_width = data.textures.title.button_icons.width() as f32 / 3.0;
+        let icons_height = data.textures.title.button_icons.height() as f32;
+
         data.canvas.copy_ex(
             &data.textures.title.button_icons,
-            FRect::new(64.0 * (self.ty as u8) as f32, 0.0, 64.0, 64.0),
+            FRect::new(
+                icons_third_width * (self.ty as u8) as f32,
+                0.0,
+                icons_third_width,
+                icons_height,
+            ),
             FRect::from_center(
                 FPoint::new(
-                    (crate::WIDTH as f32 / 2.0 + horizontal_offset) + 225.0 * scale_multiplier,
+                    (crate::WIDTH as f32 / 2.0 + horizontal_offset) + 230.0 * scale_multiplier,
                     vertical_pos - 3.0,
                 ),
-                BUTTON_SIZE * scale_multiplier,
-                BUTTON_SIZE * scale_multiplier,
+                BUTTON_SIZE * scale_multiplier * 0.8,
+                BUTTON_SIZE * scale_multiplier * 0.8,
             ),
             0.0,
             None,

@@ -2,7 +2,7 @@ use platform_editor_core::common_util::{Rectf, Vec2, Vec2f};
 use sdl3::{
     pixels::Color,
     rect::Rect,
-    render::{Canvas, FPoint, FRect, RenderTarget, Vertex, VertexIndices},
+    render::{Canvas, FPoint, FRect, RenderTarget, Texture, Vertex, VertexIndices},
 };
 
 use crate::render::DrawResult;
@@ -109,5 +109,28 @@ impl<T: RenderTarget> CanvasExt for Canvas<T> {
             vertex(corners.bottom_left, rect.pos.add_y(rect.dimensions.y)),
         ];
         self.render_geometry(vertices, None, VertexIndices::U8(&INDICES))
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct DualImageDimensions {
+    pub half_width: f32,
+    pub height: f32,
+}
+
+impl DualImageDimensions {
+    pub fn new(texture: &Texture) -> Self {
+        DualImageDimensions {
+            half_width: texture.width() as f32 / 2.0,
+            height: texture.height() as f32,
+        }
+    }
+
+    pub fn frect(self, second: bool) -> FRect {
+        if second {
+            FRect::new(self.half_width, 0.0, self.half_width, self.height)
+        } else {
+            FRect::new(0.0, 0.0, self.half_width, self.height)
+        }
     }
 }
