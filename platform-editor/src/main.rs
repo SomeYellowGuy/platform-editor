@@ -32,6 +32,8 @@ pub mod screen;
 pub mod textures;
 pub mod util;
 
+mod font;
+
 /// The target width of the window.
 pub const WIDTH: u32 = 1280;
 /// The target height of the window.
@@ -79,9 +81,7 @@ pub fn main() {
     let texture_creator = canvas.texture_creator();
 
     let context = sdl3::ttf::init().expect("could not initialize TTF context");
-    let font = context
-        .load_font("assets/font.ttf", 48.0)
-        .expect("could not load font");
+    let font = font::load_font(&context, 48.0).expect("could not load font");
 
     let textures = Textures::load(&texture_creator).expect("could not create textures");
 

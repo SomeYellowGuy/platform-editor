@@ -1,12 +1,12 @@
 use platform_editor_core::textures::level::KeyTextures;
 use sdl3::{
-    image::LoadTexture,
     render::{Texture, TextureCreator},
     video::WindowContext,
 };
 
 use crate::component::title::button::ExtractedFontTextureSets;
 
+mod bundled;
 mod dynamic;
 
 pub use dynamic::{DynamicText, TextAlignment};
@@ -22,45 +22,55 @@ pub struct Textures<'c> {
     pub icons: IconTextures<'c>,
 }
 
-fn load_texture<'c>(creator: &'c TextureCreator<WindowContext>, name: &str) -> Option<Texture<'c>> {
-    if let Ok(t) = creator.load_texture(name) {
+fn load_texture<'c>(
+    creator: &'c TextureCreator<WindowContext>,
+    path: &'static str,
+) -> Option<Texture<'c>> {
+    if let Ok(t) = bundled::load_texture_from_static_textures(creator, path) {
         Some(t)
     } else {
-        tracing::error!("Could not load texture: {name}");
+        tracing::error!("Could not find texture at {path}");
         None
     }
 }
 
+fn load_texture_string<'c>(
+    creator: &'c TextureCreator<WindowContext>,
+    path: String,
+) -> Option<Texture<'c>> {
+    load_texture(creator, path.leak())
+}
+
 fn load_tile_texture<'c>(
     creator: &'c TextureCreator<WindowContext>,
-    name: &str,
+    tile_path: &str,
 ) -> Option<Texture<'c>> {
-    load_texture(creator, &("assets/gfx/tiles/".to_string() + name))
+    load_texture_string(creator, format!("tiles/{tile_path}"))
 }
 
 impl<'c> Textures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Textures<'c>> {
         Some(Self {
-            strip: load_texture(creator, "assets/gfx/strip.png")?,
-            back_button: load_texture(creator, "assets/gfx/back.png")?,
+            strip: load_texture(creator, "strip.png")?,
+            back_button: load_texture(creator, "back.png")?,
             title: TitleTextures {
-                title: load_texture(creator, "assets/gfx/title/title.png")?,
-                button: load_texture(creator, "assets/gfx/title/button.png")?,
-                button_icons: load_texture(creator, "assets/gfx/title/button_icons.png")?,
+                title: load_texture(creator, "title/title.png")?,
+                button: load_texture(creator, "title/button.png")?,
+                button_icons: load_texture(creator, "title/button_icons.png")?,
 
                 texts: ExtractedFontTextureSets::new(creator),
             },
             level_select: LevelSelectTextures::load(creator)?,
             level: LevelTextures::load(creator)?,
             icons: IconTextures {
-                flag: load_texture(creator, "assets/gfx/icons/flag.png")?,
+                flag: load_texture(creator, "icons/flag.png")?,
 
-                collect: load_texture(creator, "assets/gfx/icons/collect.png")?,
-                time: load_texture(creator, "assets/gfx/icons/time.png")?,
-                items: load_texture(creator, "assets/gfx/icons/items.png")?,
-                enemies_defeated: load_texture(creator, "assets/gfx/icons/enemies_defeated.png")?,
-                enemies_left: load_texture(creator, "assets/gfx/icons/enemies_left.png")?,
-                gravity: load_texture(creator, "assets/gfx/icons/gravity.png")?,
+                collect: load_texture(creator, "icons/collect.png")?,
+                time: load_texture(creator, "icons/time.png")?,
+                items: load_texture(creator, "icons/items.png")?,
+                enemies_defeated: load_texture(creator, "icons/enemies_defeated.png")?,
+                enemies_left: load_texture(creator, "icons/enemies_left.png")?,
+                gravity: load_texture(creator, "icons/gravity.png")?,
             },
         })
     }
@@ -89,15 +99,15 @@ pub struct LevelSelectTextures<'c> {
 impl<'c> LevelSelectTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         Some(Self {
-            level_buttons: load_texture(creator, "assets/gfx/level_select/level_buttons.png")?,
-            stars: load_texture(creator, "assets/gfx/level_select/stars.png")?,
+            level_buttons: load_texture(creator, "level_select/level_buttons.png")?,
+            stars: load_texture(creator, "level_select/stars.png")?,
             perfect_star_highlight: load_texture(
                 creator,
-                "assets/gfx/level_select/perfect_star_highlight.png",
+                "level_select/perfect_star_highlight.png",
             )?,
-            digits: load_texture(creator, "assets/gfx/level_select/digits.png")?,
-            golden_digits: load_texture(creator, "assets/gfx/level_select/golden_digits.png")?,
-            locked: load_texture(creator, "assets/gfx/level_select/locked.png")?,
+            digits: load_texture(creator, "level_select/digits.png")?,
+            golden_digits: load_texture(creator, "level_select/golden_digits.png")?,
+            locked: load_texture(creator, "level_select/locked.png")?,
             header_text: DynamicText::new(creator),
             stars_text: DynamicText::new(creator),
         })
@@ -137,36 +147,33 @@ pub struct LevelTextures<'c> {
 impl<'c> LevelTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         let flags: Vec<_> = (1..=9)
-            .filter_map(|n| load_texture(creator, &format!("assets/gfx/level/flag/{n}.png")))
+            .filter_map(|n| load_texture_string(creator, format!("level/flag/{n}.png")))
             .collect();
         Some(Self {
             tiles: Self::load_tile_textures(creator)?,
-            player: load_texture(creator, "assets/gfx/level/player.png")?,
-            enemy: load_texture(creator, "assets/gfx/level/enemy.png")?,
+            player: load_texture(creator, "level/player.png")?,
+            enemy: load_texture(creator, "level/enemy.png")?,
             flags: flags.try_into().ok()?,
-            hit_flag: load_texture(creator, "assets/gfx/level/flag/hit.png")?,
+            hit_flag: load_texture(creator, "level/flag/hit.png")?,
             collectibles: CollectibleTextures {
-                star: load_texture(creator, "assets/gfx/level/collectibles/star.png")?,
-                gravity_orb: load_texture(
-                    creator,
-                    "assets/gfx/level/collectibles/gravity_orb.png",
-                )?,
+                star: load_texture(creator, "level/collectibles/star.png")?,
+                gravity_orb: load_texture(creator, "level/collectibles/gravity_orb.png")?,
                 keys: KeyTextures::new(
-                    load_texture(creator, "assets/gfx/level/keys/red.png")?,
-                    load_texture(creator, "assets/gfx/level/keys/orange.png")?,
-                    load_texture(creator, "assets/gfx/level/keys/yellow.png")?,
-                    load_texture(creator, "assets/gfx/level/keys/green.png")?,
-                    load_texture(creator, "assets/gfx/level/keys/blue.png")?,
-                    load_texture(creator, "assets/gfx/level/keys/keyhole.png")?,
+                    load_texture(creator, "level/keys/red.png")?,
+                    load_texture(creator, "level/keys/orange.png")?,
+                    load_texture(creator, "level/keys/yellow.png")?,
+                    load_texture(creator, "level/keys/green.png")?,
+                    load_texture(creator, "level/keys/blue.png")?,
+                    load_texture(creator, "level/keys/keyhole.png")?,
                 ),
             },
-            item_box: load_texture(creator, "assets/gfx/level/item_box.png")?,
+            item_box: load_texture(creator, "level/item_box.png")?,
             bottom_bar: BottomBarTextures::load(creator)?,
             end_dialog: EndDialogTextures::load(creator)?,
             items_text: DynamicText::new(creator),
 
-            bullet: load_texture(creator, "assets/gfx/level/bullet.png")?,
-            bullet_glow: load_texture(creator, "assets/gfx/level/bullet_glow.png")?,
+            bullet: load_texture(creator, "level/bullet.png")?,
+            bullet_glow: load_texture(creator, "level/bullet_glow.png")?,
         })
     }
 
@@ -241,13 +248,13 @@ pub struct BottomBarTextures<'c> {
 impl<'c> BottomBarTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         Some(Self {
-            base: load_texture(creator, "assets/gfx/level/bottom_bar/base.png")?,
+            base: load_texture(creator, "level/bottom_bar/base.png")?,
             level_text: DynamicText::new(creator),
             time_text: DynamicText::new(creator),
 
-            reset: load_texture(creator, "assets/gfx/level/bottom_bar/reset.png")?,
-            options: load_texture(creator, "assets/gfx/level/bottom_bar/options.png")?,
-            level_select: load_texture(creator, "assets/gfx/level/bottom_bar/level_select.png")?,
+            reset: load_texture(creator, "level/bottom_bar/reset.png")?,
+            options: load_texture(creator, "level/bottom_bar/options.png")?,
+            level_select: load_texture(creator, "level/bottom_bar/level_select.png")?,
         })
     }
 }
@@ -265,10 +272,10 @@ pub struct EndDialogTextures<'c> {
 impl<'c> EndDialogTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         Some(Self {
-            base: load_texture(creator, "assets/gfx/level/end_dialog/base.png")?,
+            base: load_texture(creator, "level/end_dialog/base.png")?,
             nice_text: DynamicText::new(creator),
             level_text: DynamicText::new(creator),
-            stars: load_texture(creator, "assets/gfx/level/end_dialog/stars.png")?,
+            stars: load_texture(creator, "level/end_dialog/stars.png")?,
             buttons: EndDialogButtonTextures::load(creator)?,
             number_texts: Vec::new(),
         })
@@ -285,13 +292,10 @@ pub struct EndDialogButtonTextures<'c> {
 impl<'c> EndDialogButtonTextures<'c> {
     pub fn load(creator: &'c TextureCreator<WindowContext>) -> Option<Self> {
         Some(Self {
-            level_select: load_texture(
-                creator,
-                "assets/gfx/level/end_dialog/buttons/level_select.png",
-            )?,
-            next: load_texture(creator, "assets/gfx/level/end_dialog/buttons/next.png")?,
-            next_end: load_texture(creator, "assets/gfx/level/end_dialog/buttons/next_end.png")?,
-            retry: load_texture(creator, "assets/gfx/level/end_dialog/buttons/retry.png")?,
+            level_select: load_texture(creator, "level/end_dialog/buttons/level_select.png")?,
+            next: load_texture(creator, "level/end_dialog/buttons/next.png")?,
+            next_end: load_texture(creator, "level/end_dialog/buttons/next_end.png")?,
+            retry: load_texture(creator, "level/end_dialog/buttons/retry.png")?,
         })
     }
 }

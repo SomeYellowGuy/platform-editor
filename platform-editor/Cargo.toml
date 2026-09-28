@@ -2,6 +2,7 @@
 name = "platform-editor"
 version = "0.1.0"
 edition = "2024"
+build = "build/main.rs"
 
 [dependencies]
 platform-editor-core.workspace = true
@@ -10,3 +11,9 @@ sdl3-sys.workspace = true
 
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+phf.workspace = true
+
+[build-dependencies]
+walkdir = "2.5"
+phf_codegen = "0.14"
