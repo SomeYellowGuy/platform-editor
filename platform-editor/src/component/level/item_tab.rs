@@ -96,7 +96,10 @@ fn render_items(
         };
         let size = ITEM_BOX_ICON_SIZE * multiplier;
 
-        if let Some(texture) = stack.item.icon_texture_mut(&mut data.textures.level.tiles) {
+        if let Some(texture) = stack.item.icon_texture_mut(
+            &mut data.textures.level.tiles,
+            &mut data.textures.level.collectibles,
+        ) {
             texture.set_alpha_mod(u8::MAX);
             let icon_center =
                 center - Vec2f::new(ITEM_BOX_ICON_OFFSET, ITEM_BOX_ICON_OFFSET) * multiplier;

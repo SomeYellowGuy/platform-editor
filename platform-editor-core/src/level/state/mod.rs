@@ -10,9 +10,12 @@ use crate::{
     component::level::end_dialog::StarStatus,
     level::{
         LockBorderType, LockColor, LockColorMap, StarCondition,
-        definition::{CollectibleType, FlagState, ItemPlaceOutcome, ItemStack, StoredLock, Tile},
+        definition::{
+            Collectible, CollectibleType, FlagState, Item, ItemPlaceOutcome, ItemStack, StoredLock,
+            Tile,
+        },
         scratch::{ScratchTileState, StoredScratchLevel},
-        state::moving::MovingHitboxSnapshot,
+        state::{entity::HazardContext, moving::MovingHitboxSnapshot},
     },
 };
 
@@ -155,7 +158,9 @@ impl LockState {
 
     /// Unlocks all locks of the provided color.
     pub fn unlock(&mut self, color: LockColor) {
-        self.key_collect_instants.insert(color, Instant::now());
+        if !self.key_collect_instants.contains_key(color) {
+            self.key_collect_instants.insert(color, Instant::now());
+        }
     }
 
     /// Returns whether the locks of the given color are unlocked.
@@ -176,12 +181,20 @@ impl LockState {
         }
         false
     }
+
+    pub fn color_alpha(&self, color: LockColor) -> f32 {
+        self.key_collect_instant(color).map_or(0.0, |i| {
+            (i.elapsed().as_secs_f32() / Lock::FADE_TIME).min(1.0)
+        })
+    }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct LevelState {
     pub finish_instant: Option<Instant>,
     pub go_instant: Option<Instant>,
+
+    start_instant: Instant,
 
     pub player: Entity,
     pub tile_state: TileState,
@@ -222,13 +235,43 @@ pub enum LevelStateOutcome {
     Lose,
 }
 
+impl Default for LevelState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LevelState {
     /// Creates a new state into which a level can be loaded.
     pub fn new() -> Self {
-        LevelState::default()
+        LevelState {
+            finish_instant: None,
+            go_instant: None,
+            start_instant: Instant::now(),
+            player: Entity::default(),
+            tile_state: TileState::default(),
+            flag: FlagState::default(),
+            star_conditions: Vec::new(),
+            items: Vec::new(),
+            selected_item: None,
+            placed_items: 0,
+            collectibles: Vec::new(),
+            collected_star_indices: Vec::new(),
+            shooters: Vec::new(),
+            shooter_bullets: Vec::new(),
+            moving: Vec::new(),
+            lock_state: LockState::new(),
+            enemies: Vec::new(),
+            enemies_at_start: 0,
+        }
     }
 
-    pub fn load_scratch_level(&mut self, index: usize, initially_selected_item: Option<usize>) {
+    pub fn load_scratch_level(
+        &mut self,
+        index: usize,
+        initially_selected_item: Option<usize>,
+        last_level_stars: Option<u32>,
+    ) {
         let level = &crate::level::scratch::levels::LEVELS[index];
         let mut tiles = Vec::new();
 
@@ -267,7 +310,7 @@ impl LevelState {
         self.enemies = level
             .enemies
             .iter()
-            .map(|e| Enemy::new(e.ty, e.pos))
+            .map(|e| Enemy::new(e.ty, e.pos, e.gravity_direction))
             .collect();
         self.enemies_at_start = self.enemies.len();
         self.player.gravity_direction = Direction::Down;
@@ -278,7 +321,11 @@ impl LevelState {
             .iter()
             .map(|c| StarCondition::from(*c))
             .collect();
-        self.items = level.items.to_vec();
+        self.items = if let Some(stars) = last_level_stars {
+            vec![ItemStack::new(Item::Star, stars)]
+        } else {
+            level.items.to_vec()
+        };
         self.finish_instant = None;
         self.selected_item = if let Some(i) = initially_selected_item
             && i >= self.items.len()
@@ -307,7 +354,7 @@ impl LevelState {
         let snapshot = MovingHitboxSnapshot::new(&self.moving);
         // Tick moving platforms.
         for (i, moving) in &mut self.moving.iter_mut().enumerate() {
-            moving.tick(i, &self.tile_state, &snapshot, delta);
+            moving.tick(i, &self.tile_state, &self.lock_state, &snapshot, delta);
         }
 
         let collision_context = CollisionContext::new(
@@ -321,33 +368,29 @@ impl LevelState {
         // Update the moving platform vectors for the player.
         self.player.update_platform_move_vector(collision_context);
 
-        // Tick shooter bullets.
-        if self
-            .shooter_bullets
-            .iter()
-            .any(|bullet| bullet.is_touching(self.player.pos, Entity::RADIUS))
-        {
-            return LevelStateOutcome::Lose;
-        }
-
         self.shooter_bullets
             .retain_mut(|bullet| bullet.tick(delta, collision_context));
 
-        // Check for shooters.
+        // Check for shooters to shoot anything.
         for shooter in &mut self.shooters {
             if let Some(bullet) = shooter.tick(delta, self.player.pos) {
                 self.shooter_bullets.push(bullet);
             }
         }
 
+        let hazard_context = HazardContext::new(&self.shooter_bullets);
+
         // Tick the player.
-        if !self.player.tick(player_controls, collision_context) {
+        if !self
+            .player
+            .tick(player_controls, collision_context, hazard_context)
+        {
             return LevelStateOutcome::Lose;
         }
 
         // Tick the enemies.
         self.enemies
-            .retain_mut(|e| e.tick(self.player.pos, collision_context));
+            .retain_mut(|e| e.tick(self.player.pos, collision_context, hazard_context));
 
         // Check if any enemies touch the player.
         let player_hitbox = self.player.hitbox();
@@ -362,17 +405,20 @@ impl LevelState {
             }
         }
 
+        let time = self.nanos_since_start();
+
         // Check for any collected collectibles.
-        let collected_colors: Vec<LockColor> = Vec::new();
-        for collectible in self.player.check_collectibles(&mut self.collectibles) {
+        let mut collected_colors: Vec<LockColor> = Vec::new();
+        for collectible in self.player.check_collectibles(time, &mut self.collectibles) {
             collectible.mark_collected();
             match collectible.ty {
                 CollectibleType::Star(i) => self.collected_star_indices.push(i),
                 CollectibleType::Key(color) => {
                     self.lock_state.unlock(color);
-                    // "Collect" all other keys of the same color later.
+                    // "Collect" all the other keys of the same color for later.
+                    collected_colors.push(color);
                 }
-                CollectibleType::GravityOrb => todo!(),
+                CollectibleType::GravityOrb => self.player.invert_gravity(),
             }
         }
 
@@ -381,6 +427,19 @@ impl LevelState {
                 && collected_colors.contains(&color)
             {
                 collectible.mark_collected();
+            }
+        }
+
+        // Check for any orbs that enemies have collected.
+        for enemy in &mut self.enemies {
+            for collectible in enemy
+                .entity
+                .check_collectibles(time, &mut self.collectibles)
+            {
+                if let CollectibleType::GravityOrb = collectible.ty {
+                    enemy.entity.invert_gravity();
+                    collectible.mark_collected();
+                }
             }
         }
 
@@ -417,7 +476,7 @@ impl LevelState {
                 self.enemies_at_start - self.enemies.len() >= *e as usize
             }
             StarCondition::EnemiesLeft(e) => self.enemies.len() >= *e as usize,
-            _ => true, // TODO
+            StarCondition::Gravity(d) => self.player.gravity_direction == *d,
         }
     }
 
@@ -438,7 +497,7 @@ impl LevelState {
 
     /// Tries to place the currently-selected item on the board, returning `true`
     /// if it was successful.
-    pub fn try_place_item(&mut self, pos: Vec2<i32>, delta: f32) -> bool {
+    pub fn try_place_item(&mut self, pos: Vec2<i32>) -> bool {
         if !self.tile_state.is_within_bounds(pos) {
             return false;
         }
@@ -452,64 +511,93 @@ impl LevelState {
         if stack.count == 0 {
             return false;
         }
-        stack.count -= 1;
         let outcome = stack.item.place_outcome();
         // Apply the outcome.
-        let outcome_is_successful = self.apply_outcome(pos, outcome, delta);
+        let outcome_is_successful = self.apply_outcome(pos, outcome);
         if outcome_is_successful {
+            let stack = self.selected_item_mut().unwrap();
+            stack.count -= 1;
             self.placed_items += 1;
         }
         outcome_is_successful
     }
 
-    pub fn apply_outcome(
-        &mut self,
-        pos: Vec2<usize>,
-        outcome: ItemPlaceOutcome,
-        delta: f32,
-    ) -> bool {
+    fn entities(&self) -> impl Iterator<Item = &Entity> {
+        std::iter::once(&self.player).chain(self.enemies.iter().map(|e| &e.entity))
+    }
+
+    fn collides_with_collectibles(&self, hitbox: Rectf) -> bool {
+        self.collectibles.iter().any(|c| {
+            c.tile_place_hitbox(self.nanos_since_start())
+                .intersects(hitbox)
+        })
+    }
+
+    fn collides_with_level_check(&self, hitbox: Rectf) -> bool {
+        // Check if this hitbox collides with a collectible.
+        if self.collides_with_collectibles(hitbox) {
+            return false;
+        }
+
+        // Check if any entity is colliding with the hitbox.
+        if self.entities().any(|e| e.hitbox().intersects(hitbox)) {
+            return false;
+        }
+
+        // Check if any moving platform is colliding with the hitbox.
+        if self.moving.iter().any(|m| m.hitbox().intersects(hitbox)) {
+            return false;
+        }
+
+        true
+    }
+
+    /// Returns the time, in nanoseconds, since this level state was created.
+    ///
+    /// The creation time of this state can predate its first tick.
+    pub fn nanos_since_start(&self) -> u128 {
+        self.start_instant.elapsed().as_nanos()
+    }
+
+    pub fn apply_outcome(&mut self, pos: Vec2<usize>, outcome: ItemPlaceOutcome) -> bool {
         match outcome {
             ItemPlaceOutcome::Tile(tile) => {
-                let old_tile = std::mem::replace(self.tile_state.tile_mut(pos.x, pos.y), tile);
-                // Check if the player is colliding with a tile.
-                if self.player.is_colliding_with_tiles(&self.tile_state) {
-                    // Reverse the placement.
-                    *self.tile_state.tile_mut(pos.x, pos.y) = old_tile;
+                if let Some(hitbox) = tile.hitbox(pos.to_vec2f())
+                    && !self.collides_with_level_check(hitbox)
+                {
                     return false;
                 }
+                *self.tile_state.tile_mut(pos.x, pos.y) = tile;
                 true
             }
             ItemPlaceOutcome::Moving(ty) => {
                 let moving_platform = Moving::new(ty, pos.to_center_vec2f());
-                // Check if the player is colliding with a non-empty tile.
-                if self
-                    .tile_state
-                    .is_colliding_with_hitbox(moving_platform.hitbox())
-                {
+                let hitbox = moving_platform.hitbox();
+                if !self.collides_with_level_check(hitbox) {
                     return false;
                 }
                 self.moving.push(moving_platform);
-
-                let snapshot = MovingHitboxSnapshot::new(&self.moving);
-                let context = CollisionContext::new(
-                    &self.tile_state,
-                    &self.lock_state,
-                    &self.moving,
-                    &snapshot,
-                    delta,
-                );
-                // Check if the player is colliding with the moving platform.
-                if self.player.colliding_with_moving(context).is_some() {
-                    // Reverse the placement.
-                    self.moving.pop();
+                true
+            }
+            ItemPlaceOutcome::Collectible(ty) => {
+                let collectible =
+                    CollectibleState::new(Collectible::new(pos.to_center_vec2f(), ty));
+                if !self.collides_with_level_check(
+                    collectible.tile_place_hitbox(self.nanos_since_start()),
+                ) {
                     return false;
                 }
+                self.collectibles.push(collectible);
                 true
             }
         }
     }
 
-    pub fn selected_item(&mut self) -> Option<&mut ItemStack> {
+    pub fn selected_item(&self) -> Option<&ItemStack> {
+        self.selected_item.map(|i| &self.items[i])
+    }
+
+    pub fn selected_item_mut(&mut self) -> Option<&mut ItemStack> {
         self.selected_item.map(|i| &mut self.items[i])
     }
 }

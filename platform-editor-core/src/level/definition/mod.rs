@@ -5,7 +5,7 @@ mod moving;
 mod tile;
 mod unlocking;
 
-pub use collectible::{Collectible, CollectibleType};
+pub use collectible::{Collectible, CollectibleType, Track, TrackType};
 pub use flag::FlagState;
 pub use item::{Item, ItemPlaceOutcome, ItemStack};
 pub use moving::MovingBlockItem;
@@ -21,19 +21,28 @@ use crate::{
 pub struct Enemy {
     pub ty: EnemyType,
     pub pos: Vec2f,
+    pub gravity_direction: Direction,
 }
 
 impl Enemy {
-    pub const fn new(ty: EnemyType, pos: Vec2f) -> Self {
-        Self { ty, pos }
+    pub const fn new(ty: EnemyType, pos: Vec2f, gravity_direction: Direction) -> Self {
+        Self {
+            ty,
+            pos,
+            gravity_direction,
+        }
     }
 
     pub const fn normal(pos: Vec2f) -> Self {
-        Self::new(EnemyType::Normal, pos)
+        Self::new(EnemyType::Normal, pos, Direction::Down)
+    }
+
+    pub const fn normal_with_direction(pos: Vec2f, gravity_direction: Direction) -> Self {
+        Self::new(EnemyType::Normal, pos, gravity_direction)
     }
 
     pub const fn slow(pos: Vec2f) -> Self {
-        Self::new(EnemyType::Slow, pos)
+        Self::new(EnemyType::Slow, pos, Direction::Down)
     }
 }
 

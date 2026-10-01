@@ -362,6 +362,8 @@ impl Direction {
         }
     }
 
+    /// Returns the angle of this direction in the *clockwise* direction,
+    /// assuming [`Direction::Right`] to have an angle of `0.0`.
     pub const fn angle(self) -> f32 {
         match self {
             Direction::Up => -PI / 2.0,

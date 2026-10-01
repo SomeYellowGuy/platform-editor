@@ -92,6 +92,9 @@ pub struct LevelSelectTextures<'c> {
     pub golden_digits: Texture<'c>,
     pub locked: Texture<'c>,
 
+    pub last_level_button: Texture<'c>,
+    pub crown: Texture<'c>,
+
     pub header_text: DynamicText<'c>,
     pub stars_text: DynamicText<'c>,
 }
@@ -108,6 +111,10 @@ impl<'c> LevelSelectTextures<'c> {
             digits: load_texture(creator, "level_select/digits.png")?,
             golden_digits: load_texture(creator, "level_select/golden_digits.png")?,
             locked: load_texture(creator, "level_select/locked.png")?,
+
+            last_level_button: load_texture(creator, "level_select/last_level_button.png")?,
+            crown: load_texture(creator, "level_select/crown.png")?,
+
             header_text: DynamicText::new(creator),
             stars_text: DynamicText::new(creator),
         })
@@ -230,6 +237,7 @@ impl<'c> LevelTextures<'c> {
             ],
             top_slab: load_tile_texture(creator, "block_slab_r.png")?,
             bottom_slab: load_tile_texture(creator, "block_slab.png")?,
+            golden_block: load_tile_texture(creator, "golden_block.png")?,
             block: load_tile_texture(creator, "block.png")?,
         })
     }

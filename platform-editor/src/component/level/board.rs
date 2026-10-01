@@ -1,3 +1,5 @@
+use std::{f64::consts::PI, time::Instant};
+
 use platform_editor_core::{
     common_util::{Direction, Rectf, Vec2, Vec2f},
     component::{
@@ -195,13 +197,7 @@ impl Render for BoardBase {
 
         // Draw locks.
         for (color, locks) in state.lock_state.locks().into_iter() {
-            let color_alpha_mod = state
-                .lock_state
-                .key_collect_instant(color)
-                .map_or(0.0, |i| {
-                    (i.elapsed().as_secs_f32() / Lock::FADE_TIME).min(1.0)
-                });
-
+            let color_alpha_mod = state.lock_state.color_alpha(color);
             let lock_alpha = 255 - multiply_alphas(alpha, (color_alpha_mod * 255.0) as u8);
 
             for lock in locks {
@@ -258,7 +254,12 @@ impl Render for BoardBase {
                     let rect = rectf_to_screen(state, rect, offset);
 
                     // Draw the tile.
-                    if let Some(texture) = data.textures.level.tiles.texture_from_tile_mut(tile) {
+                    if let Some(texture) = data
+                        .textures
+                        .level
+                        .tiles
+                        .texture_from_tile_mut(data.extracted_data.level_save, tile)
+                    {
                         copy(data.canvas, alpha, texture, None, rect)?;
                     }
                 }
@@ -314,6 +315,7 @@ impl Render for BoardBase {
 
         // Draw the flag.
         let flag_center = pos_to_screen(state, state.flag.pos, offset).into_fpoint();
+        let angle = state.flag.direction.angle() as f64 - PI / 2.0;
         let (texture, width_mul, height_mul) = if let Some(instant) = state.finish_instant {
             const FLAG_HIT_ANIMATION_DURATION: f32 = 0.6;
             // 1 - start, 0 - end
@@ -332,19 +334,21 @@ impl Render for BoardBase {
                 1.0,
             )
         };
-        copy(
+        copy_with_rotation(
             data.canvas,
             alpha,
             texture,
             None,
             FRect::from_center(flag_center, width_mul * TILE_SIZE, height_mul * TILE_SIZE),
+            angle.to_degrees(),
         )?;
 
         // Draw the hypothetical placed item.
         if let Some(selected) = state.selected_item
-            && let Some(texture) = state.items[selected]
-                .item
-                .icon_texture_mut(&mut data.textures.level.tiles)
+            && let Some(texture) = state.items[selected].item.icon_texture_mut(
+                &mut data.textures.level.tiles,
+                &mut data.textures.level.collectibles,
+            )
         {
             let mouse = data.extracted_data.mouse_pos;
             let target =
@@ -383,7 +387,8 @@ impl Render for BoardBase {
                 .collectibles
                 .texture_from_collectible_mut(collectible.ty)
             {
-                let center = pos_to_screen(state, collectible.pos, offset);
+                let center =
+                    pos_to_screen(state, collectible.pos(state.nanos_since_start()), offset);
                 let scale = collectible.ty.collectible_rect_scale();
                 copy_with_rotation(
                     data.canvas,
@@ -495,7 +500,6 @@ impl Logic for BoardBase {
                 let mouse_pos = Vec2f::new(mouse_pos.x, mouse_pos.y);
                 state.try_place_item(
                     screen_to_pos(state, mouse_pos, Vec2f::new(0.0, 0.0)).map(|f| f as i32),
-                    delta,
                 );
             }
 
@@ -518,7 +522,7 @@ impl Logic for BoardBase {
 
                 let displayed_time = state
                     .go_instant
-                    .unwrap()
+                    .unwrap_or_else(Instant::now)
                     .elapsed()
                     .as_secs()
                     .min(BottomBarBase::MAX_DISPLAY_TIME)

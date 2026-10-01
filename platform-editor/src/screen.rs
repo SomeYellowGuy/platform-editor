@@ -54,8 +54,12 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, app_data: &mut AppData) 
         }
         Screen::LevelSelect => {
             app_data.level_select_scroll_velocity = 0.0;
-
-            for level in 0..LEVEL_COUNT {
+            let iter_end = if app_data.level.is_beat(LEVEL_COUNT - 2) {
+                LEVEL_COUNT
+            } else {
+                LEVEL_COUNT - 1
+            };
+            for level in 0..iter_end {
                 map.insert(
                     ComponentId::LevelSelectButton(level),
                     Component::LevelSelectButton(LevelSelectButtonBase::new(level)),
@@ -84,7 +88,11 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, app_data: &mut AppData) 
         Screen::Level => {
             let level = app_data.level.playing_level;
             let mut level_state = LevelState::new();
-            level_state.load_scratch_level(level, app_data.previous_selected_item);
+            level_state.load_scratch_level(
+                level,
+                app_data.previous_selected_item,
+                app_data.level.last_level_stars(),
+            );
             map.insert(ComponentId::Board, Component::Board(BoardBase), 10, 0);
             map.insert(ComponentId::ItemTab, Component::ItemTab(ItemTabBase), 15, 5);
             map.insert(

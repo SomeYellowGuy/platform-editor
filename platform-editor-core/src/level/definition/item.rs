@@ -1,6 +1,6 @@
 use crate::{
-    level::definition::{MovingBlockItem, Tile},
-    textures::level::TileTextures,
+    level::definition::{CollectibleType, MovingBlockItem, Tile},
+    textures::level::{CollectibleTextures, TileTextures},
 };
 
 /// A type of something that can be placed by a player.
@@ -25,14 +25,18 @@ impl Item {
         }
     }
 
-    pub fn icon_texture_mut<'a, T>(&self, textures: &'a mut TileTextures<T>) -> Option<&'a mut T> {
+    pub fn icon_texture_mut<'a, T>(
+        &self,
+        tile_textures: &'a mut TileTextures<T>,
+        collectible_textures: &'a mut CollectibleTextures<T>,
+    ) -> Option<&'a mut T> {
         match self {
-            Self::Block => Some(&mut textures.placed_blocks.permanent),
-            Self::TimedBlock(t) => Some(textures.placed_blocks.timed_texture_mut(*t as usize)),
-            Self::Moving(moving_block_item) => moving_block_item.texture_mut(textures),
+            Self::Block => Some(&mut tile_textures.placed_blocks.permanent),
+            Self::TimedBlock(t) => Some(tile_textures.placed_blocks.timed_texture_mut(*t as usize)),
+            Self::Moving(moving_block_item) => moving_block_item.texture_mut(tile_textures),
             // TODO
-            Self::GravityOrb => None,
-            Self::Star => None,
+            Self::GravityOrb => Some(&mut collectible_textures.gravity_orb),
+            Self::Star => Some(&mut collectible_textures.star),
         }
     }
 
@@ -48,8 +52,8 @@ impl Item {
             Self::Block => ItemPlaceOutcome::Tile(Tile::PlacedBlock),
             Self::TimedBlock(t) => ItemPlaceOutcome::Tile(Tile::PlacedTimedBlock(*t as f32)),
             Self::Moving(moving_block_item) => ItemPlaceOutcome::Moving(moving_block_item.clone()),
-            Self::GravityOrb => todo!(),
-            Self::Star => todo!(),
+            Self::GravityOrb => ItemPlaceOutcome::Collectible(CollectibleType::GravityOrb),
+            Self::Star => ItemPlaceOutcome::Collectible(CollectibleType::Star(usize::MAX)),
         }
     }
 }
@@ -57,7 +61,7 @@ impl Item {
 pub enum ItemPlaceOutcome {
     Tile(Tile),
     Moving(MovingBlockItem),
-    // TODO: Add collectible outcome
+    Collectible(CollectibleType),
 }
 
 /// Represents a type of item (which can be placed) and its remaining count.

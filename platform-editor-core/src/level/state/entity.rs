@@ -6,7 +6,7 @@ use crate::{
         EnemyType,
         definition::Tile,
         state::{
-            CollectibleState, LockState, Moving, TileCollision, TileState,
+            CollectibleState, LockState, Moving, ShooterBullet, TileCollision, TileState,
             moving::MovingHitboxSnapshot,
         },
     },
@@ -58,8 +58,19 @@ impl<'a> CollisionContext<'a> {
         self.moving.iter().enumerate().find_map(|(i, m)| {
             m.hitbox()
                 .intersects(hitbox)
-                .then(|| m.velocity(i, self.tiles, self.moving_snapshot, self.delta))
+                .then(|| m.velocity(i, self.tiles, self.locks, self.moving_snapshot, self.delta))
         })
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct HazardContext<'a> {
+    pub shooter_bullets: &'a [ShooterBullet],
+}
+
+impl<'a> HazardContext<'a> {
+    pub fn new(shooter_bullets: &'a [ShooterBullet]) -> Self {
+        Self { shooter_bullets }
     }
 }
 
@@ -84,6 +95,8 @@ pub struct Entity {
     pub velocity: Vec2f,
     pub gravity_direction: Direction,
 
+    pub move_velocity: f32,
+
     is_falling: bool,
     platform_move_vector: Option<Vec2f>,
     coyote_time_left: f32,
@@ -96,6 +109,7 @@ impl Default for Entity {
         Self {
             pos: Default::default(),
             velocity: Default::default(),
+            move_velocity: Self::MOVE_VELOCITY,
             gravity_direction: Direction::Down,
             is_falling: Default::default(),
             platform_move_vector: None,
@@ -209,7 +223,12 @@ impl Entity {
     /// Ticks this entity.
     ///
     /// Returns whether this entity is still alive.
-    pub fn tick(&mut self, controls: Controls, context: CollisionContext) -> bool {
+    pub fn tick(
+        &mut self,
+        controls: Controls,
+        context: CollisionContext,
+        hazards: HazardContext,
+    ) -> bool {
         // If this entity is touching a moving platform, make it move
         // along its instantaneous velocity.
         if let Some(v) = self.platform_move_vector {
@@ -243,6 +262,15 @@ impl Entity {
             }
         }
 
+        // Check if any shooter bullets are touching this entity.
+        if hazards
+            .shooter_bullets
+            .iter()
+            .any(|bullet| bullet.is_touching(self.pos, Entity::RADIUS))
+        {
+            return false;
+        }
+
         // Check if the entity is too close to the void, or is touching something deadly.
         !self.is_touching_void(context.tiles) && !self.is_touching_deadly_area(context.tiles)
     }
@@ -253,7 +281,7 @@ impl Entity {
             entity_rng.rng.next_f32_in_range(&entity_rng.range)
         } else {
             1.0
-        } * Self::MOVE_VELOCITY;
+        } * self.move_velocity;
 
         self.velocity.x += horizontal as f32 * delta * move_velocity;
 
@@ -384,14 +412,19 @@ impl Entity {
     /// the mutable references to the collided collectibles.
     pub fn check_collectibles<'a>(
         &self,
+        time: u128,
         collectibles: &'a mut [CollectibleState],
     ) -> Vec<&'a mut CollectibleState> {
         collectibles
             .iter_mut()
             .filter_map(|c| {
-                (!c.is_collected() && c.is_touching(self.pos, Self::RADIUS)).then_some(c)
+                (!c.is_collected() && c.is_touching(time, self.pos, Self::RADIUS)).then_some(c)
             })
             .collect()
+    }
+
+    pub fn invert_gravity(&mut self) {
+        self.gravity_direction = self.gravity_direction.opposite();
     }
 }
 
@@ -407,24 +440,42 @@ impl Enemy {
     const PLAYER_POSITION_THRESHOLD: f32 = 0.16;
     const JUMP_THRESHOLD: f32 = 0.04;
 
-    pub fn new(ty: EnemyType, pos: Vec2f) -> Self {
+    pub fn new(ty: EnemyType, pos: Vec2f, gravity_direction: Direction) -> Self {
         Enemy {
             ty,
             entity: Entity {
                 pos,
+                move_velocity: Self::move_velocity(ty),
                 random_velocity_rng: Some(EntityRng::new(0.6..1.0)),
+                gravity_direction,
                 ..Default::default()
             },
             last_x_pos: None,
         }
     }
 
+    pub fn move_velocity(ty: EnemyType) -> f32 {
+        match ty {
+            EnemyType::Normal => Entity::MOVE_VELOCITY,
+            EnemyType::Slow => Entity::MOVE_VELOCITY / 3.0,
+        }
+    }
+
+    pub fn can_jump(&self) -> bool {
+        matches!(self.ty, EnemyType::Normal)
+    }
+
     /// Ticks this entity.
     ///
     /// Returns whether this entity is still alive.
-    pub fn tick(&mut self, player_pos: Vec2f, context: CollisionContext) -> bool {
+    pub fn tick(
+        &mut self,
+        player_pos: Vec2f,
+        context: CollisionContext,
+        hazards: HazardContext,
+    ) -> bool {
         let controls = self.controls(player_pos);
-        self.entity.tick(controls, context)
+        self.entity.tick(controls, context, hazards)
     }
 
     fn controls(&mut self, player_pos: Vec2f) -> Controls {
@@ -446,12 +497,13 @@ impl Enemy {
             (false, false)
         };
 
-        let jump = if let Some(x) = self.last_x_pos {
-            (x - self.entity.pos.x).abs() < Self::JUMP_THRESHOLD
-                && self.entity.gravity_multiplier() * self.entity.pos.x > 0.0
-        } else {
-            false
-        };
+        let jump = self.can_jump()
+            && if let Some(x) = self.last_x_pos {
+                (x - self.entity.pos.x).abs() < Self::JUMP_THRESHOLD
+                    && self.entity.gravity_multiplier() * (self.entity.pos.y - player_pos.y) > 0.0
+            } else {
+                false
+            };
 
         self.last_x_pos = Some(self.entity.pos.x);
 

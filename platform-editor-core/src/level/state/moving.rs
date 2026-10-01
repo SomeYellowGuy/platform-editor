@@ -2,7 +2,7 @@ use crate::{
     common_util::{Direction, Rectf, Vec2f},
     level::{
         definition::MovingBlockItem,
-        state::{CollisionContext, TileState},
+        state::{CollisionContext, LockState, TileState},
     },
 };
 
@@ -72,6 +72,7 @@ impl Moving {
         &self,
         index: usize,
         tiles: &TileState,
+        locks: &LockState,
         snapshot: &MovingHitboxSnapshot,
         delta: f32,
     ) -> Vec2f {
@@ -82,7 +83,7 @@ impl Moving {
         for _ in 0..quality {
             let x = pos.x;
             pos.x += velocity.x / quality as f32;
-            if Self::is_colliding(hitbox, index, tiles, snapshot) {
+            if Self::is_colliding(hitbox, index, tiles, locks, snapshot) {
                 pos.x = x;
                 break;
             }
@@ -90,7 +91,7 @@ impl Moving {
         for _ in 0..quality {
             let y = pos.y;
             pos.y += velocity.y / quality as f32;
-            if Self::is_colliding(hitbox, index, tiles, snapshot) {
+            if Self::is_colliding(hitbox, index, tiles, locks, snapshot) {
                 pos.y = y;
                 break;
             }
@@ -103,15 +104,19 @@ impl Moving {
         hitbox: Rectf,
         index: usize,
         tiles: &TileState,
+        locks: &LockState,
         snapshot: &MovingHitboxSnapshot,
     ) -> bool {
-        snapshot.is_colliding(index, hitbox) || tiles.is_colliding_with_hitbox(hitbox)
+        snapshot.is_colliding(index, hitbox)
+            || tiles.is_colliding_with_hitbox(hitbox)
+            || locks.is_colliding(hitbox)
     }
 
     pub fn tick(
         &mut self,
         index: usize,
         tiles: &TileState,
+        locks: &LockState,
         snapshot: &MovingHitboxSnapshot,
         delta: f32,
     ) {
@@ -123,7 +128,7 @@ impl Moving {
         for _ in 0..quality {
             let x = self.pos.x;
             self.pos.x += velocity.x / quality as f32;
-            if Self::is_colliding(self.hitbox(), index, tiles, snapshot) {
+            if Self::is_colliding(self.hitbox(), index, tiles, locks, snapshot) {
                 self.pos.x = x;
                 self.update_x_velocity();
                 velocity = self.target_velocity(delta);
@@ -132,7 +137,7 @@ impl Moving {
         for _ in 0..quality {
             let y = self.pos.y;
             self.pos.y += velocity.y / quality as f32;
-            if Self::is_colliding(self.hitbox(), index, tiles, snapshot) {
+            if Self::is_colliding(self.hitbox(), index, tiles, locks, snapshot) {
                 self.pos.y = y;
                 self.update_y_velocity();
                 velocity = self.target_velocity(delta);
@@ -154,9 +159,15 @@ impl Moving {
 
     pub fn colliding_with_moving(context: CollisionContext, hitbox: Rectf) -> Option<Vec2f> {
         context.moving.iter().enumerate().find_map(|(i, m)| {
-            m.hitbox()
-                .intersects(hitbox)
-                .then(|| m.velocity(i, context.tiles, context.moving_snapshot, context.delta))
+            m.hitbox().intersects(hitbox).then(|| {
+                m.velocity(
+                    i,
+                    context.tiles,
+                    context.locks,
+                    context.moving_snapshot,
+                    context.delta,
+                )
+            })
         })
     }
 }

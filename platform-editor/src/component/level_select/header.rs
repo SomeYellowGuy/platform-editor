@@ -1,4 +1,7 @@
-use platform_editor_core::component::level_select::LevelSelectHeaderBase;
+use platform_editor_core::{
+    common_util::Vec2f, component::level_select::LevelSelectHeaderBase,
+    level::scratch::levels::LEVEL_COUNT,
+};
 use sdl3::{
     pixels::Color,
     rect::Rect,
@@ -6,7 +9,11 @@ use sdl3::{
 };
 
 use crate::{
-    HEIGHT, WIDTH, logic::Logic, render::Render, textures::TextAlignment, util::DualImageDimensions,
+    HEIGHT, WIDTH,
+    logic::Logic,
+    render::Render,
+    textures::TextAlignment,
+    util::{DualImageDimensions, IntoFPoint},
 };
 
 pub const HEADER_HEIGHT: u32 = 90;
@@ -68,18 +75,41 @@ impl Render for LevelSelectHeaderBase {
 
         let stars = data.extracted_data.level_save.stars_collected();
 
-        // Draw the star count.
-        data.textures.level_select.stars_text.update(
-            data.canvas,
-            data.font,
-            format!("{stars}/90"),
-        )?;
+        let total_stars = (LEVEL_COUNT - 1) * 3;
 
-        let star_count_pos = FPoint::new((WIDTH / 2) as f32 + STAR_INFO_OFFSET + 90.0, text_y);
-        data.textures.level_select.stars_text.draw(
+        let mut star_count_pos = Vec2f::new((WIDTH / 2) as f32 + STAR_INFO_OFFSET + 90.0, text_y);
+
+        // Draw the star count.
+        let all_stars_collected = stars == total_stars as u32;
+        let stars_text = &mut data.textures.level_select.stars_text;
+        stars_text.update(data.canvas, data.font, stars.to_string())?;
+        stars_text.set_color_mod(if all_stars_collected {
+            Color::RGB(255, 255, 200)
+        } else {
+            Color::WHITE
+        });
+        stars_text.draw(
             data.canvas,
             TextAlignment::Left,
-            star_count_pos,
+            star_count_pos.into_fpoint(),
+            TEXT_SCALE,
+        )?;
+        if all_stars_collected {
+            stars_text.draw(
+                data.canvas,
+                TextAlignment::Left,
+                star_count_pos.add_x(-2.0).into_fpoint(),
+                TEXT_SCALE,
+            )?;
+        }
+
+        star_count_pos = star_count_pos.add_x(stars_text.width() * TEXT_SCALE);
+        stars_text.update(data.canvas, data.font, format!("/{total_stars}"))?;
+        stars_text.set_color_mod(Color::WHITE);
+        stars_text.draw(
+            data.canvas,
+            TextAlignment::Left,
+            star_count_pos.into_fpoint(),
             TEXT_SCALE,
         )?;
 

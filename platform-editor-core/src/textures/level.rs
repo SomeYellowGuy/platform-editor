@@ -4,6 +4,7 @@ use crate::{
         FilledLockColorMap, LockColor,
         definition::{CollectibleType, Tile},
     },
+    save::campaign::LevelSave,
 };
 
 /// A structure that may or may not hold a texture or image for each direction.
@@ -90,6 +91,7 @@ pub struct TileTextures<T> {
     pub dirt: [T; 5],
     pub top_slab: T,
     pub bottom_slab: T,
+    pub golden_block: T,
     pub block: T,
 }
 
@@ -109,10 +111,14 @@ impl<T> TileTextures<T> {
         }
     }
 
-    pub fn texture_from_tile_mut(&mut self, tile: &Tile) -> Option<&mut T> {
+    pub fn texture_from_tile_mut(&mut self, save: &LevelSave, tile: &Tile) -> Option<&mut T> {
         match tile {
             Tile::Empty => None,
-            Tile::Block => Some(&mut self.block),
+            Tile::Block => Some(if save.last_level_is_playing() {
+                &mut self.golden_block
+            } else {
+                &mut self.block
+            }),
             Tile::TopSlab => Some(&mut self.top_slab),
             Tile::BottomSlab => Some(&mut self.bottom_slab),
             Tile::Grass(i) => Some(&mut self.grass[*i]),

@@ -4,7 +4,7 @@ use crate::{
     common_util::{Bidirection, Direction, Rectf, Vec2f},
     level::{
         definition::Tile,
-        state::{CollisionContext, entity::CollisionType},
+        state::{CollisionContext, TileCollision, entity::CollisionType},
     },
 };
 
@@ -26,7 +26,7 @@ impl ShooterState {
     ///
     /// For example, for a shooter in the right direction, this would be the
     /// minimum difference in the y-component of the position vectors of both.
-    pub const ACTIVATION_RANGE: f32 = 0.35;
+    pub const ACTIVATION_RANGE: f32 = 0.42;
 
     /// The minimum distance from the point `1.0` units from a shooter, along its
     /// direction of the player for the shooter to trigger.
@@ -94,6 +94,7 @@ pub struct ShooterBullet {
     pub direction: Direction,
     pub speed_multiplier: f32,
     instant: Instant,
+    out_of_block: bool,
 }
 
 impl ShooterBullet {
@@ -108,6 +109,7 @@ impl ShooterBullet {
         Self {
             pos: shooter.pos,
             direction: shooter.direction,
+            out_of_block: false,
             instant: Instant::now(),
             speed_multiplier: shooter.speed_multiplier,
         }
@@ -126,15 +128,27 @@ impl ShooterBullet {
         let ty = context.is_colliding(self.hitbox());
         let should_survive = match ty {
             CollisionType::None => true,
-            CollisionType::Tile(t) => {
-                self.is_immune_to_tiles() && matches!(t, Tile::Shooter { .. })
+            CollisionType::Tile(Tile::Shooter { .. }) => {
+                self.is_immune_to_tiles() || !self.out_of_block
             }
-            CollisionType::Moving(_) | CollisionType::Border | CollisionType::Lock => false,
+            CollisionType::Tile(_) | CollisionType::Moving(_) | CollisionType::Lock => {
+                !self.out_of_block
+            }
+            CollisionType::Border => false,
         };
         if should_survive {
             self.pos += self.direction.unit_vec2f() * Self::SPEED * delta * self.speed_multiplier
+        } else {
+            return false;
         }
-        should_survive
+        if !matches!(
+            context.tiles.tile_collision_with_hitbox(self.hitbox()),
+            TileCollision::Tile(Tile::Shooter { .. })
+        ) {
+            self.out_of_block = true;
+        }
+
+        true
     }
 
     pub fn is_touching(&self, pos: Vec2f, entity_radius: f32) -> bool {

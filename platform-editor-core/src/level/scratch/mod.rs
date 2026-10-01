@@ -2,7 +2,9 @@ use crate::{
     common_util::{Bidirection, Direction, Rectf, Vec2, Vec2f, digit_count},
     level::{
         LockBorderType, LockColor, StarCondition,
-        definition::{Collectible, CollectibleType, Enemy, FlagState, ItemStack, Tile},
+        definition::{
+            Collectible, CollectibleType, Enemy, FlagState, ItemStack, Tile, Track, TrackType,
+        },
         state::Lock,
     },
 };
@@ -93,7 +95,7 @@ impl ScratchLock {
             }
             (LockColor::Blue, Bidirection::Horizontal) => {
                 let mut rect = Self::horizontal_rect(center);
-                rect.dimensions.y -= (1.0 - Self::THICKNESS) / 2.0;
+                rect.pos.y -= (1.0 - Self::THICKNESS) / 2.0 - 0.1;
                 (rect, None)
             }
             (_, Bidirection::Horizontal) => {
@@ -179,11 +181,11 @@ impl StoredScratchTile {
             ))),
             b'I' => Some(Self::Lock(ScratchLock::new(
                 LockColor::Blue,
-                Bidirection::Vertical,
+                Bidirection::Horizontal,
             ))),
             b'J' => Some(Self::Lock(ScratchLock::new(
                 LockColor::Blue,
-                Bidirection::Horizontal,
+                Bidirection::Vertical,
             ))),
             b'K' => Some(Self::Lock(ScratchLock::new(
                 LockColor::Yellow,
@@ -366,21 +368,44 @@ impl From<ScratchCollectibleType> for CollectibleType {
 pub struct ScratchCollectible {
     pub pos: Vec2f,
     pub ty: ScratchCollectibleType,
+    pub moving: bool,
 }
 
 impl ScratchCollectible {
     pub const fn new(pos: Vec2f, ty: ScratchCollectibleType) -> Self {
-        Self { pos, ty }
+        Self::with_moving(pos, ty, false)
+    }
+
+    pub const fn with_moving(pos: Vec2f, ty: ScratchCollectibleType, moving: bool) -> Self {
+        Self { pos, ty, moving }
     }
 
     pub const fn key(pos: Vec2f, color: ScratchLockColor) -> Self {
-        Self::new(pos, ScratchCollectibleType::Key(color))
+        Self::with_moving(pos, ScratchCollectibleType::Key(color), false)
+    }
+
+    pub const fn key_moving(pos: Vec2f, color: ScratchLockColor) -> Self {
+        Self::with_moving(pos, ScratchCollectibleType::Key(color), true)
+    }
+
+    pub fn moving_track() -> Track {
+        Track {
+            ty: TrackType::Line {
+                direction: Direction::Right,
+                amplitude: 2.0,
+            },
+            time_period: 4.0,
+        }
     }
 }
 
 impl From<ScratchCollectible> for Collectible {
     fn from(value: ScratchCollectible) -> Self {
-        Self::new(value.pos, value.ty.into())
+        Self::with_track_option(
+            value.pos,
+            value.ty.into(),
+            value.moving.then(ScratchCollectible::moving_track),
+        )
     }
 }
 

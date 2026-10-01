@@ -11,5 +11,9 @@ pub fn load_texture_from_static_textures<'c>(
     creator: &'c TextureCreator<WindowContext>,
     path: &'static str,
 ) -> Result<Texture<'c>, sdl3::Error> {
-    creator.load_texture_bytes(TEXTURES[path])
+    if let Some(v) = TEXTURES.get(path) {
+        creator.load_texture_bytes(v)
+    } else {
+        panic!("No texture was bundled with the path {path}!")
+    }
 }

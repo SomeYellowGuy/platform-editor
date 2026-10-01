@@ -1,3 +1,4 @@
+use crate::level::scratch::levels;
 use crate::{level::scratch::levels::LEVEL_COUNT, save::SaveFile};
 
 use crate::save::ReadFrom;
@@ -39,6 +40,25 @@ impl LevelSave {
 
     pub fn stars_collected(&self) -> u32 {
         self.stars.iter().map(|num| num.count_ones()).sum()
+    }
+
+    pub fn last_level_is_playing(&self) -> bool {
+        self.playing_level == LEVEL_COUNT - 1
+    }
+
+    pub fn last_level_stars(&self) -> Option<u32> {
+        self.last_level_is_playing().then(|| self.stars_collected())
+    }
+
+    pub fn max_level(&self) -> usize {
+        let mut i = 0;
+        while i < levels::LEVEL_COUNT {
+            if !self.is_beat(i) {
+                break;
+            }
+            i += 1;
+        }
+        i
     }
 }
 
