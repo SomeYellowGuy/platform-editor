@@ -83,10 +83,8 @@ impl AudioPlayer {
         };
 
         let io = unsafe {
-            let ll_io = sdl3_sys::iostream::SDL_IOFromMem(
-                bytes.as_ptr() as *mut libc::c_void,
-                bytes.len()
-            );
+            let ll_io =
+                sdl3_sys::iostream::SDL_IOFromMem(bytes.as_ptr() as *mut libc::c_void, bytes.len());
 
             IOStream::from_ll(ll_io)
         };

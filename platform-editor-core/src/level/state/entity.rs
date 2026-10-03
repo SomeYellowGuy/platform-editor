@@ -182,13 +182,13 @@ impl Entity {
     pub const RADIUS: f32 = 0.375;
 
     /// The acceleration due to gravity.
-    pub const GRAVITY: f32 = 0.47;
+    pub const GRAVITY: f32 = 30.0;
 
     /// The velocity of an entity if they jump.
-    pub const JUMP_VELOCITY: f32 = 0.16;
+    pub const JUMP_VELOCITY: f32 = 10.0;
 
     /// The lateral velocity of an entity if they move.
-    pub const MOVE_VELOCITY: f32 = 0.6;
+    pub const MOVE_VELOCITY: f32 = 33.0;
 
     /// The coyote time provided to an entity for jumping.
     pub const COYOTE_TIME: f32 = 0.1;
@@ -312,11 +312,12 @@ impl Entity {
     /// Moves this entity by its velocity in steps.
     pub fn move_in_steps(&mut self, context: CollisionContext) {
         let quality = ((self.velocity.x.abs() + self.velocity.y.abs()).ceil() * 5.0) as usize;
+        let displacement = self.velocity * context.delta;
         self.is_falling = true;
 
         for _ in 0..quality {
             let x = self.pos.x;
-            self.pos.x += self.velocity.x / quality as f32;
+            self.pos.x += displacement.x / quality as f32;
             if self.is_colliding(context).is_some() {
                 self.pos.x = x;
                 self.velocity.x = 0.0;
@@ -325,7 +326,7 @@ impl Entity {
         }
         for _ in 0..quality {
             let y = self.pos.y;
-            self.pos.y += self.velocity.y / quality as f32;
+            self.pos.y += displacement.y / quality as f32;
             if self.is_colliding(context).is_some() {
                 if self.velocity.y * self.gravity_multiplier() > 0.0 {
                     self.is_falling = false;
@@ -481,7 +482,7 @@ impl Enemy {
     const PLAYER_POSITION_THRESHOLD: f32 = 0.16;
     const JUMP_THRESHOLD: f32 = 0.04;
 
-    const VOLUME_MULTIPLIER: f32 = 0.2;
+    const VOLUME_MULTIPLIER: f32 = 0.4;
 
     pub fn new(ty: EnemyType, pos: Vec2f, gravity_direction: Direction) -> Self {
         Enemy {

@@ -3,7 +3,7 @@ use platform_editor_core::{
     component::{
         BackButtonBase, BackButtonMode, ComponentId,
         level::{
-            BoardBase, ItemTabBase,
+            ItemTabBase,
             bottom_bar::{BottomBarBase, BottomBarButtonBase, BottomBarButtonType},
         },
         level_select::{LevelSelectHeaderBase, button::LevelSelectButtonBase},
@@ -21,6 +21,7 @@ use crate::{
     AppData, ComponentMap, NO_LOGIC_PRIORITY, WIDTH,
     component::{
         Component,
+        level::Board,
         level_select::button::{LEVELS_PER_ROW, SPACING},
     },
     logic::LogicData,
@@ -93,7 +94,7 @@ pub fn on_enter(screen: Screen, map: &mut ComponentMap, app_data: &mut AppData) 
                 app_data.previous_selected_item,
                 app_data.level.last_level_stars(),
             );
-            map.insert(ComponentId::Board, Component::Board(BoardBase), 10, 0);
+            map.insert(ComponentId::Board, Component::Board(Board::new()), 10, 0);
             map.insert(ComponentId::ItemTab, Component::ItemTab(ItemTabBase), 15, 5);
             map.insert(
                 ComponentId::BottomBar,

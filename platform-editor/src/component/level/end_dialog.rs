@@ -5,6 +5,7 @@ use platform_editor_core::{
         Hold,
         level::end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType, StarStatus},
     },
+    level::scratch::levels::LEVEL_COUNT,
 };
 use sdl3::{
     mouse::MouseButton,
@@ -355,7 +356,13 @@ impl Render for EndDialogButtonBase {
         let button_textures = &mut data.textures.level.end_dialog.buttons;
         let texture = match self.ty {
             EndDialogButtonType::LevelSelect => &mut button_textures.level_select,
-            EndDialogButtonType::Next => &mut button_textures.next,
+            EndDialogButtonType::Next => {
+                if data.extracted_data.playing_level == LEVEL_COUNT - 2 {
+                    &mut button_textures.next_end
+                } else {
+                    &mut button_textures.next
+                }
+            }
             EndDialogButtonType::Retry => &mut button_textures.retry,
         };
         texture.set_alpha_mod(alpha_mod);

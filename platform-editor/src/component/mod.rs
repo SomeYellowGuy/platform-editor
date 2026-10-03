@@ -3,7 +3,7 @@ use platform_editor_core::{
     component::{
         BackButtonBase, BackButtonMode, Event, Hold,
         level::{
-            BoardBase, ItemTabBase,
+            ItemTabBase,
             bottom_bar::{BottomBarBase, BottomBarButtonBase},
             end_dialog::{EndDialogBase, EndDialogButtonBase},
         },
@@ -18,6 +18,7 @@ use sdl3::{
 };
 
 use crate::{
+    component::level::Board,
     logic::{Logic, LogicData},
     render::{DrawResult, Render, RenderData},
     util::FRectExt,
@@ -124,7 +125,7 @@ pub enum Component {
     LevelSelectButton(LevelSelectButtonBase),
     LevelSelectHeader(LevelSelectHeaderBase),
 
-    Board(BoardBase),
+    Board(Board),
     ItemTab(ItemTabBase),
     BottomBar(BottomBarBase),
     BottomBarButton(BottomBarButtonBase),

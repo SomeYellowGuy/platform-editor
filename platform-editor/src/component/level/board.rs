@@ -6,7 +6,6 @@ use platform_editor_core::{
     component::{
         ComponentId, Event, QueuedComponent,
         level::{
-            BoardBase,
             bottom_bar::BottomBarBase,
             end_dialog::{EndDialogBase, EndDialogButtonBase, EndDialogButtonType, StarStatus},
         },
@@ -36,6 +35,33 @@ use crate::{
     util::{CanvasExt, Corners, FRectExt, IntoFPoint},
 };
 
+pub struct Board {
+    accumulator: u128,
+}
+
+impl Board {
+    pub fn new() -> Self {
+        Self { accumulator: 0 }
+    }
+
+    pub fn accumulate(&mut self, delta: u128) -> bool {
+        self.accumulator += delta;
+
+        let tick = self.accumulator >= BOARD_DELTA_NANOS;
+        if tick {
+            self.accumulator %= BOARD_DELTA_NANOS;
+        }
+
+        tick
+    }
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Whether to visualize the collision and deadly hitboxes of tiles.
 pub const VISUALIZE_TILE_HITBOXES: bool = false;
 
@@ -44,6 +70,11 @@ pub const COLLECTIBLE_SIZE: f32 = 55.0;
 pub const LEVEL_CENTER: Vec2f = Vec2f::new(WIDTH as f32 / 2.0, HEIGHT as f32 / 2.0 + 28.0);
 
 pub const ITEM_PREVIEW_ALPHA: u8 = (u8::MAX as f32 * 0.6) as u8;
+
+/// The number of board ticks per second.
+pub const BOARD_TICKS_PER_SECOND: f32 = 60.0;
+const BOARD_DELTA: f32 = 1.0 / BOARD_TICKS_PER_SECOND;
+const BOARD_DELTA_NANOS: u128 = (1_000_000_000.0 / BOARD_TICKS_PER_SECOND) as u128;
 
 /// Converts a position in *level space* to a [`Vec2f`] on the actual screen.
 ///
@@ -125,7 +156,7 @@ fn with_alpha(color: u32, alpha: u8) -> u32 {
 
 //
 
-impl Render for BoardBase {
+impl Render for Board {
     fn render(&self, data: &mut crate::render::RenderData) -> crate::render::DrawResult {
         let t = data.transition_offset(1.8);
         let (alpha, offset) = if data.transitioned_from(Screen::Level) {
@@ -469,9 +500,8 @@ pub fn visualize_tile_hitboxes(
     Ok(())
 }
 
-impl Logic for BoardBase {
+impl Logic for Board {
     fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
-        let delta = data.delta_time as f32 / 1_000_000_000.0;
         let finished = data
             .app_data
             .level_state
@@ -491,93 +521,97 @@ impl Logic for BoardBase {
             )
         };
 
-        let outcome = {
-            let Some(state) = &mut data.app_data.level_state else {
-                return;
+        if self.accumulate(data.delta_time) {
+            let outcome = {
+                let Some(state) = &mut data.app_data.level_state else {
+                    return;
+                };
+
+                // Check for an item to be placed.
+                if mouse_up {
+                    let mouse_pos = Vec2f::new(mouse_pos.x, mouse_pos.y);
+                    match state.try_place_item(
+                        screen_to_pos(state, mouse_pos, Vec2f::new(0.0, 0.0)).map(|f| f as i32),
+                    ) {
+                        Ok(()) => data.audio.play(Sound::Place),
+                        Err(PlaceError::OutOfItems) => data.audio.play(Sound::ClickFail),
+                        Err(_) => {}
+                    };
+                }
+
+                state.tick(data.audio, Controls::new(left, right, jump), BOARD_DELTA)
             };
 
-            // Check for an item to be placed.
-            if mouse_up {
-                let mouse_pos = Vec2f::new(mouse_pos.x, mouse_pos.y);
-                match state.try_place_item(
-                    screen_to_pos(state, mouse_pos, Vec2f::new(0.0, 0.0)).map(|f| f as i32),
-                ) {
-                    Ok(()) => data.audio.play(Sound::Place),
-                    Err(PlaceError::OutOfItems) => data.audio.play(Sound::ClickFail),
-                    Err(_) => {}
-                };
+            if finished {
+                return;
             }
 
-            state.tick(data.audio, Controls::new(left, right, jump), delta)
-        };
+            match outcome {
+                LevelStateOutcome::Win => {
+                    data.audio.play(Sound::Win);
+                    let state = data.app_data.level_state.as_mut().unwrap();
 
-        if finished {
-            return;
-        }
+                    // Finish the level. Add an end dialog.
+                    state.mark_finished();
 
-        match outcome {
-            LevelStateOutcome::Win => {
-                data.audio.play(Sound::Win);
-                let state = data.app_data.level_state.as_mut().unwrap();
+                    // Save the star data.
+                    let end_dialog_base = EndDialogBase::from_level_state(state);
 
-                // Finish the level. Add an end dialog.
-                state.mark_finished();
+                    let displayed_time = state
+                        .go_instant
+                        .unwrap_or_else(Instant::now)
+                        .elapsed()
+                        .as_secs()
+                        .min(BottomBarBase::MAX_DISPLAY_TIME)
+                        as u32;
 
-                // Save the star data.
-                let end_dialog_base = EndDialogBase::from_level_state(state);
+                    data.queued.add_event(Event::LevelFinish(displayed_time));
 
-                let displayed_time = state
-                    .go_instant
-                    .unwrap_or_else(Instant::now)
-                    .elapsed()
-                    .as_secs()
-                    .min(BottomBarBase::MAX_DISPLAY_TIME)
-                    as u32;
+                    for ty in EndDialogButtonType::ALL {
+                        data.queued.add_component(QueuedComponent {
+                            id: ComponentId::EndDialogButton(ty),
+                            component: Component::EndDialogButton(EndDialogButtonBase::new(
+                                state, ty,
+                            )),
+                            render_priority: 1000,
+                            logic_priority: 20,
+                        });
+                    }
 
-                data.queued.add_event(Event::LevelFinish(displayed_time));
-
-                for ty in EndDialogButtonType::ALL {
+                    let byte = StarStatus::to_bits(&end_dialog_base.star_statuses);
+                    data.app_data
+                        .level
+                        .award(data.app_data.level.playing_level, byte);
+                    if let Some(ref path_pref) = data.app_data.extra.pref_path {
+                        match App::save_level_save(data.app_data, path_pref) {
+                            Ok(()) => tracing::info!("Successfully saved the level progress data!"),
+                            Err(error) => tracing::error!(
+                                "An error occured while trying to save the level progress data: {error}"
+                            ),
+                        }
+                    }
                     data.queued.add_component(QueuedComponent {
-                        id: ComponentId::EndDialogButton(ty),
-                        component: Component::EndDialogButton(EndDialogButtonBase::new(state, ty)),
-                        render_priority: 1000,
-                        logic_priority: 20,
+                        id: ComponentId::EndDialog,
+                        component: Component::EndDialog(end_dialog_base),
+                        render_priority: 20,
+                        logic_priority: 10,
                     });
                 }
-
-                let byte = StarStatus::to_bits(&end_dialog_base.star_statuses);
-                data.app_data
-                    .level
-                    .award(data.app_data.level.playing_level, byte);
-                if let Some(ref path_pref) = data.app_data.extra.pref_path {
-                    match App::save_level_save(data.app_data, path_pref) {
-                        Ok(()) => tracing::info!("Successfully saved the level progress data!"),
-                        Err(error) => tracing::error!(
-                            "An error occured while trying to save the level progress data: {error}"
-                        ),
-                    }
+                LevelStateOutcome::Lose => {
+                    // Play a sound.
+                    data.audio.play(Sound::Lose);
+                    // Reset the level by calling a transition.
+                    data.reset_level_call();
                 }
-                data.queued.add_component(QueuedComponent {
-                    id: ComponentId::EndDialog,
-                    component: Component::EndDialog(end_dialog_base),
-                    render_priority: 20,
-                    logic_priority: 10,
-                });
-            }
-            LevelStateOutcome::Lose => {
-                // Play a sound.
-                data.audio.play(Sound::Lose);
-                // Reset the level by calling a transition.
-                data.reset_level_call();
-            }
-            LevelStateOutcome::None => {
-                let state = data.app_data.level_state.as_mut().unwrap();
+                LevelStateOutcome::None => {
+                    let state = data.app_data.level_state.as_mut().unwrap();
 
-                let go = left || right || jump;
-                if go {
-                    let (instant, first_go) = state.go();
-                    if first_go {
-                        data.queue_event(Event::LevelGo(instant));
+                    let go = left || right || jump;
+                    if go {
+                        let (instant, first_go) = state.go();
+                        if first_go {
+                            data.queue_event(Event::LevelGo(instant));
+                        }
                     }
                 }
             }
