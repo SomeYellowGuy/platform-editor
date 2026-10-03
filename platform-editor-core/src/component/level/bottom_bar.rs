@@ -1,6 +1,10 @@
 use std::time::Instant;
 
-use crate::component::Hold;
+use crate::{
+    audio::Sound,
+    component::{Hold, HoldBase},
+    hold_impl,
+};
 
 /// The bottom bar of the level screen, displaying the current time,
 /// level number and FPS (possibly).
@@ -46,8 +50,9 @@ impl BottomBarBase {
 
 /// Represents a button on the bottom of the level screen (bottom bar).
 pub struct BottomBarButtonBase {
-    pub hold_time: u32,
     pub ty: BottomBarButtonType,
+
+    base: HoldBase,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -59,29 +64,30 @@ pub enum BottomBarButtonType {
 
 impl BottomBarButtonType {
     pub const ALL: [Self; 3] = [Self::Reset, Self::Options, Self::LevelSelect];
-}
 
-impl Hold for BottomBarButtonBase {
-    const MAX_HOLD_TIME: u32 = 400_000_000;
-
-    fn hold_time(&self) -> u32 {
-        self.hold_time
-    }
-
-    fn set_hold_time(&mut self, new_time: u32) {
-        self.hold_time = new_time
+    pub fn sound(self) -> Sound {
+        if self == BottomBarButtonType::Reset {
+            Sound::Click
+        } else {
+            Sound::Back
+        }
     }
 }
+
+hold_impl!(BottomBarButtonBase: 400_000_000);
 
 impl BottomBarButtonBase {
     pub const FADE_IN_TIME: f32 = 0.5;
 
     pub fn new(ty: BottomBarButtonType) -> Self {
-        Self { ty, hold_time: 0 }
+        Self {
+            ty,
+            base: HoldBase::new(),
+        }
     }
 
     pub const fn scale_multiplier(&self) -> f32 {
-        let gradient = 1.0 - self.hold_time as f32 / Self::MAX_HOLD_TIME as f32;
+        let gradient = 1.0 - self.base.hold_time as f32 / Self::MAX_HOLD_TIME as f32;
         0.9 + 0.1 * (1.0 - gradient * gradient)
     }
 }

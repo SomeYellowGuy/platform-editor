@@ -1,6 +1,7 @@
 use std::{f32::consts::PI, ops::Range};
 
 use crate::{
+    audio::{AudioParams, AudioPlay, Sound},
     common_util::{Direction, Rectf, SimpleRng, Vec2, Vec2f},
     level::{
         EnemyType,
@@ -228,6 +229,7 @@ impl Entity {
         controls: Controls,
         context: CollisionContext,
         hazards: HazardContext,
+        audio_data: EntityAudioData<'_, impl AudioPlay>,
     ) -> bool {
         // If this entity is touching a moving platform, make it move
         // along its instantaneous velocity.
@@ -243,7 +245,7 @@ impl Entity {
         self.velocity += self.gravity() * context.delta;
 
         // Apply controls.
-        self.apply_controls(controls, context.delta);
+        self.apply_controls(controls, context.delta, audio_data);
 
         // Apply friction.
         let non_gravity_component = self
@@ -275,7 +277,12 @@ impl Entity {
         !self.is_touching_void(context.tiles) && !self.is_touching_deadly_area(context.tiles)
     }
 
-    fn apply_controls(&mut self, controls: Controls, delta: f32) {
+    fn apply_controls(
+        &mut self,
+        controls: Controls,
+        delta: f32,
+        mut audio_data: EntityAudioData<'_, impl AudioPlay>,
+    ) {
         let horizontal = -(controls.left() as i8) + (controls.right() as i8);
         let move_velocity = if let Some(entity_rng) = &mut self.random_velocity_rng {
             entity_rng.rng.next_f32_in_range(&entity_rng.range)
@@ -296,6 +303,9 @@ impl Entity {
             let new_velocity = -Self::JUMP_VELOCITY * self.gravity_multiplier();
             let gravity_component = self.velocity.get_mut(self.gravity_direction.bidirection());
             *gravity_component = new_velocity;
+
+            // Play the jump sound.
+            audio_data.play(Sound::Jump);
         }
     }
 
@@ -428,6 +438,37 @@ impl Entity {
     }
 }
 
+/// A struct that stores a mutable reference to an [`AudioPlay`]
+/// along with a volume multiplier.
+///
+/// This struct also implements [`AudioPlay`], which will account for the
+/// volumen multiplier inside this struct.
+#[derive(Debug)]
+pub struct EntityAudioData<'a, A: AudioPlay> {
+    play: &'a mut A,
+    volume_multiplier: f32,
+}
+
+impl<'a, A: AudioPlay> EntityAudioData<'a, A> {
+    pub fn new(play: &'a mut A, volume_multiplier: f32) -> Self {
+        Self {
+            play,
+            volume_multiplier,
+        }
+    }
+}
+
+impl<'a, A: AudioPlay> AudioPlay for EntityAudioData<'a, A> {
+    fn play(&mut self, sound: Sound) {
+        self.play_with_params(sound, AudioParams::new());
+    }
+
+    fn play_with_params(&mut self, sound: Sound, mut params: crate::audio::AudioParams) {
+        params = params.volume(params.volume * self.volume_multiplier);
+        self.play.play_with_params(sound, params);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Enemy {
     pub ty: EnemyType,
@@ -439,6 +480,8 @@ impl Enemy {
     const MAX_PLAYER_DISTANCE: f32 = 4.6;
     const PLAYER_POSITION_THRESHOLD: f32 = 0.16;
     const JUMP_THRESHOLD: f32 = 0.04;
+
+    const VOLUME_MULTIPLIER: f32 = 0.2;
 
     pub fn new(ty: EnemyType, pos: Vec2f, gravity_direction: Direction) -> Self {
         Enemy {
@@ -473,9 +516,15 @@ impl Enemy {
         player_pos: Vec2f,
         context: CollisionContext,
         hazards: HazardContext,
+        audio_play: &mut impl AudioPlay,
     ) -> bool {
         let controls = self.controls(player_pos);
-        self.entity.tick(controls, context, hazards)
+        self.entity.tick(
+            controls,
+            context,
+            hazards,
+            EntityAudioData::new(audio_play, Self::VOLUME_MULTIPLIER),
+        )
     }
 
     fn controls(&mut self, player_pos: Vec2f) -> Controls {

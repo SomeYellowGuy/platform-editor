@@ -1,4 +1,5 @@
 use platform_editor_core::{
+    audio::Sound,
     component::{
         Hold,
         title::button::{ButtonBase, ButtonType},
@@ -13,9 +14,9 @@ use sdl3::{
 };
 
 use crate::{
+    assets::textures::{DynamicText, TextAlignment},
     logic::{Logic, LogicData},
     render::{Render, RenderData},
-    textures::{DynamicText, TextAlignment},
     util::FRectExt,
 };
 
@@ -159,6 +160,7 @@ impl Logic for ButtonBase {
 
         if hovered && data.is_mouse_button_up(MouseButton::Left) {
             self.ty.before_transition(data.app_data);
+            data.audio.play(Sound::Click);
             data.set_transition_call(TransitionCall::Start(TransitionData::new(
                 800_000_000,
                 700_000_000,

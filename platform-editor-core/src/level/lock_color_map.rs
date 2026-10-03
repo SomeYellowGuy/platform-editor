@@ -144,7 +144,7 @@ fn filter_map_function_mut<V>(tuple: (usize, &mut Option<V>)) -> Option<(usize, 
 type FilterMapIterFn<'a, V> = fn((usize, &'a Option<V>)) -> Option<(usize, &'a V)>;
 type FilterMapIterMutFn<'a, V> = fn((usize, &'a mut Option<V>)) -> Option<(usize, &'a mut V)>;
 
-/// An [`Iterator`] implementation for flock color maps.
+/// An [`Iterator`] implementation for lock color maps.
 pub struct Iter<'a, V> {
     inner: std::iter::FilterMap<InnerEnumerateIter<'a, Option<V>>, FilterMapIterFn<'a, V>>,
 }

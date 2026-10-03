@@ -91,7 +91,7 @@ impl ScratchLock {
             (LockColor::Yellow, Bidirection::Horizontal) => {
                 let mut rect = Self::horizontal_rect(center);
                 rect.dimensions.x += 0.5;
-                (rect, Some(Vec2f::new(0.0, -0.25)))
+                (rect, Some(Vec2f::new(-0.25, 0.0)))
             }
             (LockColor::Blue, Bidirection::Horizontal) => {
                 let mut rect = Self::horizontal_rect(center);

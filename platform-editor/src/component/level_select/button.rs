@@ -1,4 +1,5 @@
 use platform_editor_core::{
+    audio::Sound,
     common_util::{self, Vec2f},
     component::{Hold, level_select::button::LevelSelectButtonBase},
     level::scratch::levels::LEVEL_COUNT,
@@ -46,7 +47,7 @@ impl Render for LevelSelectButtonBase {
         let scale_multiplier = self.scale_multiplier();
 
         // If the button is currently held, add rotation.
-        let rotation = if self.held {
+        let rotation = if self.base().is_held() {
             6.0_f64 * data.oscillation_angle(2.6).sin()
         } else {
             0.0
@@ -187,6 +188,7 @@ impl Logic for LevelSelectButtonBase {
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
             // Play the level.
+            data.audio.play(Sound::Click);
             data.app_data.level.playing_level = self.level;
             data.set_transition_call(TransitionCall::Start(TransitionData::new(
                 800_000_000,
@@ -195,12 +197,10 @@ impl Logic for LevelSelectButtonBase {
             )));
         }
 
-        if !hovered && self.hold_time > Self::MAX_DISPLAY_HOLD_TIME {
-            self.hold_time = Self::MAX_DISPLAY_HOLD_TIME
-        } else {
-            self.update_hold_time(data.delta_time, hovered);
+        if !hovered && self.base().hold_time() > Self::MAX_DISPLAY_HOLD_TIME {
+            self.base_mut().set_hold_time(Self::MAX_DISPLAY_HOLD_TIME);
+        } else if self.update_hold_time(data.delta_time, hovered) {
+            data.audio.play(Sound::Hover);
         }
-
-        self.held = hovered;
     }
 }

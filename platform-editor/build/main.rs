@@ -3,14 +3,15 @@
 
 use std::{env, fs, path::Path};
 
-mod bundled_font;
-mod bundled_textures;
+mod bundled;
 
 pub fn write_expect(result: std::io::Result<()>) {
     result.expect("Could not write to `BufWriter`")
 }
 
 fn main() {
+    println!("cargo::rerun-if-changed=assets");
+
     let out_dir_path = env::var("OUT_DIR").expect("OUT_DIR should have been defined");
     let crate_dir_path =
         env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should have been defined");
@@ -26,6 +27,5 @@ fn main() {
             .expect("the output directory's parent directories should be created");
     }
 
-    bundled_textures::write_bundled_textures(&out_dir, workspace_dir);
-    bundled_font::write_bundled_font(&out_dir, workspace_dir);
+    bundled::write_bundled(&out_dir, workspace_dir);
 }

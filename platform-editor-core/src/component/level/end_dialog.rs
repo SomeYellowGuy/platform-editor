@@ -1,7 +1,9 @@
 use std::time::Instant;
 
 use crate::{
-    component::Hold,
+    audio::{AudioParams, AudioPlay, Sound},
+    component::{Hold, HoldBase},
+    hold_impl,
     level::{StarCondition, state::LevelState},
 };
 
@@ -11,6 +13,16 @@ pub struct EndDialogBase {
     pub start: Instant,
     /// All statuses of the stars starting from the second (the first is guaranteed to be collected).
     pub star_statuses: Vec<StarStatus>,
+
+    /// The last number of stars shown to be collected or uncollected to the player.
+    ///
+    /// For example:
+    /// - `1.5` means that the first star has been shown, and we are halfway to the second.
+    /// - `2.2` means that the first two stars have been shown, and we are 20% of the way to the third.
+    pub last_shown_stars: f32,
+
+    /// The number of stars shown to be collected by the player.
+    pub collected_stars: usize,
 }
 
 impl EndDialogBase {
@@ -19,6 +31,15 @@ impl EndDialogBase {
 
     pub const STAR_DELAY: f32 = 1.0;
     pub const STAR_ANIMATION_DURATION: f32 = 1.6;
+
+    fn params(collected: usize) -> AudioParams {
+        let extra = collected as f32 - 1.0;
+        AudioParams::new().volume(1.0 + extra * 0.2)
+    }
+
+    pub fn play_star_sound(&self, audio_play: &mut impl AudioPlay) {
+        audio_play.play_with_params(Sound::StarAward, Self::params(self.collected_stars));
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -48,6 +69,8 @@ impl EndDialogBase {
         Self {
             start: state.finish_instant.unwrap_or_else(Instant::now),
             star_statuses: state.star_statuses(),
+            last_shown_stars: 0.0,
+            collected_stars: 0,
         }
     }
 
@@ -60,8 +83,9 @@ impl EndDialogBase {
 /// Represents a button on the end dialog.
 pub struct EndDialogButtonBase {
     pub start: Instant,
-    pub hold_time: u32,
     pub ty: EndDialogButtonType,
+
+    base: HoldBase,
 }
 
 impl EndDialogButtonBase {
@@ -82,17 +106,7 @@ impl EndDialogButtonType {
     pub const ALL: [Self; 3] = [Self::LevelSelect, Self::Next, Self::Retry];
 }
 
-impl Hold for EndDialogButtonBase {
-    const MAX_HOLD_TIME: u32 = 400_000_000;
-
-    fn hold_time(&self) -> u32 {
-        self.hold_time
-    }
-
-    fn set_hold_time(&mut self, new_time: u32) {
-        self.hold_time = new_time
-    }
-}
+hold_impl!(EndDialogButtonBase: 400_000_000);
 
 impl EndDialogButtonBase {
     pub const FADE_IN_TIME: f32 = 0.5;
@@ -101,12 +115,12 @@ impl EndDialogButtonBase {
         Self {
             start: state.finish_instant.unwrap_or_else(Instant::now),
             ty,
-            hold_time: 0,
+            base: HoldBase::new(),
         }
     }
 
     pub const fn scale_multiplier(&self) -> f32 {
-        let gradient = 1.0 - self.hold_time as f32 / Self::MAX_HOLD_TIME as f32;
+        let gradient = 1.0 - self.base.hold_time as f32 / Self::MAX_HOLD_TIME as f32;
         0.9 + 0.1 * (1.0 - gradient * gradient)
     }
 }

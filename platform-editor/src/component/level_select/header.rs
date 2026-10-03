@@ -10,9 +10,9 @@ use sdl3::{
 
 use crate::{
     HEIGHT, WIDTH,
+    assets::textures::TextAlignment,
     logic::Logic,
     render::Render,
-    textures::TextAlignment,
     util::{DualImageDimensions, IntoFPoint},
 };
 

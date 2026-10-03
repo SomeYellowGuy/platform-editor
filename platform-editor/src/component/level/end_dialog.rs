@@ -1,4 +1,5 @@
 use platform_editor_core::{
+    audio::Sound,
     common_util::{Vec2, Vec2f},
     component::{
         Hold,
@@ -13,9 +14,9 @@ use sdl3::{
 
 use crate::{
     HEIGHT, WIDTH,
+    assets::textures::{DynamicText, TextAlignment},
     logic::Logic,
     render::{DrawResult, Render, RenderData},
-    textures::{DynamicText, TextAlignment},
     util::{FRectExt, IntoFPoint},
 };
 
@@ -102,7 +103,13 @@ impl Render for EndDialogBase {
         )?;
         tex.draw(data.canvas, TextAlignment::Center, DIALOG_LEVEL_CENTER, 0.9)?;
 
-        render_stars(data, elapsed, alpha_mod, &self.star_statuses)?;
+        render_stars(
+            data,
+            elapsed,
+            alpha_mod,
+            &self.star_statuses,
+            self.last_shown_stars,
+        )?;
 
         Ok(())
     }
@@ -114,6 +121,7 @@ fn render_stars(
     elapsed: f32,
     alpha_mod: u8,
     star_statuses: &[StarStatus],
+    stars_updated: f32,
 ) -> DrawResult {
     // Update the number textures.
     if data.textures.level.end_dialog.number_texts.len() != star_statuses.len() {
@@ -127,9 +135,6 @@ fn render_stars(
 
     let elapsed_for_stars =
         elapsed - EndDialogBase::DELAY - EndDialogBase::FADE_IN_TIME - EndDialogBase::STAR_DELAY;
-    let stars_updated = 1.0
-        + (elapsed_for_stars / EndDialogBase::STAR_ANIMATION_DURATION).max(0.0)
-            * (star_statuses.len() as f32);
 
     let mut angle: f64 = star_statuses.len() as f64 * -STAR_ANGLE_GAP / 2.0;
     data.textures
@@ -300,7 +305,38 @@ fn button_pos(ty: EndDialogButtonType) -> Vec2f {
 }
 
 impl Logic for EndDialogBase {
-    fn run_logic(&mut self, _data: &mut crate::logic::LogicData) {}
+    fn run_logic(&mut self, data: &mut crate::logic::LogicData) {
+        let elapsed_for_stars = self.start.elapsed().as_secs_f32()
+            - EndDialogButtonBase::TOTAL_DELAY
+            + Self::STAR_ANIMATION_DURATION;
+
+        let new_last_shown_stars = 1.0
+            + (elapsed_for_stars / EndDialogBase::STAR_ANIMATION_DURATION).max(0.0)
+                * (self.star_statuses.len() as f32);
+
+        if elapsed_for_stars > 0.0
+            && self.last_shown_stars < (self.star_statuses.len() as f32 + 1.0)
+        {
+            if self.collected_stars == 0 {
+                self.collected_stars = 1;
+                self.play_star_sound(data.audio);
+            }
+
+            let mut collected = false;
+            for i in (self.last_shown_stars as usize)..(new_last_shown_stars as usize) {
+                if i > 0 && self.star_statuses[i - 1].collected {
+                    self.collected_stars += 1;
+                    collected = true;
+                }
+            }
+
+            if collected {
+                self.play_star_sound(data.audio);
+            }
+        }
+
+        self.last_shown_stars = new_last_shown_stars;
+    }
 }
 
 impl Render for EndDialogButtonBase {
@@ -345,6 +381,7 @@ impl Logic for EndDialogButtonBase {
         self.update_hold_time(data.delta_time, hovered);
 
         if data.is_mouse_button_up(MouseButton::Left) && hovered {
+            data.audio.play(Sound::Click);
             match self.ty {
                 EndDialogButtonType::LevelSelect => data.level_select_call(),
                 EndDialogButtonType::Retry => data.reset_level_call(),

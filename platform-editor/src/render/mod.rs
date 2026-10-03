@@ -12,7 +12,7 @@ use sdl3::{
     video::Window,
 };
 
-use crate::{ExtractedData, textures::Textures};
+use crate::{ExtractedData, assets::textures::Textures};
 
 pub type DrawResult<T = ()> = Result<T, Error>;
 

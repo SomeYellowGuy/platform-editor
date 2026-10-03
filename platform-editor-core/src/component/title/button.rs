@@ -1,34 +1,29 @@
-use crate::{AppData, component::Hold, screen::Screen};
+use crate::{
+    AppData,
+    component::{Hold, HoldBase},
+    hold_impl,
+    screen::Screen,
+};
 
 /// A struct providing button behavior.
 pub struct ButtonBase {
     pub ty: ButtonType,
-    /// The hold time for this button (in nanoseconds), which increases when held and decreases when released
-    /// by the current delta time.
-    ///
-    /// This will be from 0 to 600,000,000.
-    pub hold_time: u32,
+
+    base: HoldBase,
 }
 
-impl Hold for ButtonBase {
-    const MAX_HOLD_TIME: u32 = 600_000_000;
-
-    fn hold_time(&self) -> u32 {
-        self.hold_time
-    }
-
-    fn set_hold_time(&mut self, new_time: u32) {
-        self.hold_time = new_time
-    }
-}
+hold_impl!(ButtonBase: 600_000_000);
 
 impl ButtonBase {
     pub const fn new(ty: ButtonType) -> Self {
-        Self { ty, hold_time: 0 }
+        Self {
+            ty,
+            base: HoldBase::new(),
+        }
     }
 
     pub const fn scale_multiplier(&self) -> f32 {
-        let gradient = 1.0 - self.hold_time as f32 / Self::MAX_HOLD_TIME as f32;
+        let gradient = 1.0 - self.base.hold_time as f32 / Self::MAX_HOLD_TIME as f32;
         0.9 + 0.1 * (1.0 - gradient * gradient)
     }
 }

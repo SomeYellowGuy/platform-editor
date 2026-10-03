@@ -1,5 +1,6 @@
 use platform_editor_core::{
-    common_util::Vec2f, component::level::ItemTabBase, level::definition::ItemStack, screen::Screen,
+    audio::Sound, common_util::Vec2f, component::level::ItemTabBase, level::definition::ItemStack,
+    screen::Screen,
 };
 use sdl3::{
     mouse::MouseButton,
@@ -9,9 +10,9 @@ use sdl3::{
 
 use crate::{
     WIDTH,
+    assets::textures::{DynamicText, TextAlignment},
     logic::Logic,
     render::{DrawResult, Render, RenderData},
-    textures::{DynamicText, TextAlignment},
     util::{FRectExt, IntoFPoint},
 };
 
@@ -157,6 +158,7 @@ impl Logic for ItemTabBase {
             for i in 0..state.items.len() {
                 let selected = state.selected_item.is_some_and(|s| s == i);
                 if item_hitbox(state.items.len(), i, 0.0, selected).contains_point(mouse_pos) {
+                    data.audio.play(Sound::Click);
                     state.selected_item = Some(i);
                     break;
                 }

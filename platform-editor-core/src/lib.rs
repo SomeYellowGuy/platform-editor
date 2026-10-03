@@ -9,6 +9,7 @@ use crate::{
     save::campaign::LevelSave,
 };
 
+pub mod audio;
 pub mod common_util;
 pub mod component;
 pub mod level;

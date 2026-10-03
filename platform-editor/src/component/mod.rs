@@ -1,4 +1,5 @@
 use platform_editor_core::{
+    audio::Sound,
     component::{
         BackButtonBase, BackButtonMode, Event, Hold,
         level::{
@@ -30,7 +31,7 @@ const BACK_BUTTON_INITIAL_RADIUS: f32 = 30.0;
 
 impl Render for BackButtonBase {
     fn render(&self, data: &mut RenderData) -> DrawResult {
-        let scale_multiplier = 1.0 + (self.hold_time as f32 / 3_000_000_000.0);
+        let scale_multiplier = 1.0 + (self.base().hold_time() as f32 / 3_000_000_000.0);
         let size = BACK_BUTTON_INITIAL_RADIUS * 2.0 * scale_multiplier;
 
         data.textures.back_button.set_blend_mode(BlendMode::Blend);
@@ -67,6 +68,7 @@ impl Logic for BackButtonBase {
         self.update_hold_time(data.delta_time, hovered);
 
         if hovered && data.is_mouse_button_up(MouseButton::Left) {
+            data.audio.play(Sound::Back);
             match self.mode {
                 BackButtonMode::BackToTitle => {
                     data.set_transition_call(TransitionCall::Start(TransitionData::new(

@@ -19,17 +19,18 @@ use sdl3::ttf::Font;
 use sdl3::video::Window;
 use sdl3_sys::render::SDL_RendererLogicalPresentation;
 
+use crate::assets::audio::AudioPlayer;
+use crate::assets::textures::Textures;
 use crate::component::Component;
 use crate::logic::input::{InputData, MouseEvent, converted_pos};
 use crate::logic::{Logic, LogicData};
 use crate::render::{Background, DrawResult, Render, RenderData};
-use crate::textures::Textures;
 
+pub mod assets;
 pub mod component;
 pub mod logic;
 pub mod render;
 pub mod screen;
-pub mod textures;
 pub mod util;
 
 mod font;
@@ -55,6 +56,8 @@ pub type AppData = platform_editor_core::AppData<ExtraAppData>;
 pub fn main() {
     let sdl_context = sdl3::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+
+    let audio_player = AudioPlayer::init(&sdl_context).unwrap();
 
     let mut window = video_subsystem
         .window("Platform Editor", 1280, 720)
@@ -108,7 +111,7 @@ pub fn main() {
 
     let mut app = App { event_pump, canvas };
 
-    app.run(textures, font, pref_path)
+    app.run(textures, font, pref_path, audio_player)
 }
 
 /// Represents the app.
@@ -158,6 +161,15 @@ pub struct ExtractedData<'i> {
     pub level_save: &'i LevelSave,
 }
 
+pub struct GameTickData<'a, 'c> {
+    textures: &'a mut Textures<'c>,
+    font: &'static Font<'static>,
+    components: &'a mut ComponentMap,
+    app_data: &'a mut AppData,
+    transition_manager: &'a mut ScreenManager,
+    audio: &'a mut AudioPlayer,
+}
+
 impl App {
     /// Sets the [`PresentMode`] of the app.
     pub fn set_present_mode(&mut self, data: &mut AppData, mode: PresentMode) {
@@ -204,7 +216,13 @@ impl App {
         Ok(())
     }
 
-    pub fn run(&mut self, mut textures: Textures, font: Font<'static>, pref_path: Option<PathBuf>) {
+    pub fn run(
+        &mut self,
+        mut textures: Textures,
+        font: Font<'static>,
+        pref_path: Option<PathBuf>,
+        mut audio: AudioPlayer,
+    ) {
         // Load our save data.
         let level_save = pref_path
             .as_ref()
@@ -234,46 +252,43 @@ impl App {
         let mut screen_manager = ScreenManager::new();
         screen::on_enter(screen_manager.screen, &mut components, &mut data);
 
+        let mut game_tick_data = GameTickData {
+            textures: &mut textures,
+            font: font_ref,
+            components: &mut components,
+            app_data: &mut data,
+            transition_manager: &mut screen_manager,
+            audio: &mut audio,
+        };
+
         'running: loop {
             let start: Instant = Instant::now();
             let delta = (start - last_instant).as_nanos();
-            match data.extra.present_mode {
-                PresentMode::Capped(max_fps) => {
-                    // Calculate the minimum time for a single frame.
-                    let min_time = Duration::from_nanos(1_000_000_000 / max_fps as u64);
 
-                    if self.game_tick(
-                        &mut textures,
-                        font_ref,
-                        &mut components,
-                        &mut data,
-                        &mut screen_manager,
-                        delta,
-                    ) {
-                        break 'running;
-                    }
+            // Calculate the minimum time for a single frame.
+            let min_time = if let PresentMode::Capped(ref max_fps) =
+                game_tick_data.app_data.extra.present_mode
+            {
+                Some(Duration::from_nanos(1_000_000_000 / *max_fps as u64))
+            } else {
+                None
+            };
 
-                    let elapsed = start.elapsed();
+            if self.game_tick(&mut game_tick_data, delta) {
+                break 'running;
+            }
 
-                    let waited_time = min_time.saturating_sub(elapsed);
+            if let Some(min_time) = min_time {
+                // If the frame rate is capped, wait a bit before the next.
+                let elapsed = start.elapsed();
 
-                    if !waited_time.is_zero() {
-                        std::thread::sleep(waited_time);
-                    }
-                }
-                PresentMode::Uncapped | PresentMode::Vsync => {
-                    if self.game_tick(
-                        &mut textures,
-                        font_ref,
-                        &mut components,
-                        &mut data,
-                        &mut screen_manager,
-                        delta,
-                    ) {
-                        break 'running;
-                    }
+                let waited_time = min_time.saturating_sub(elapsed);
+
+                if !waited_time.is_zero() {
+                    std::thread::sleep(waited_time);
                 }
             }
+
             last_instant = start
         }
     }
@@ -281,15 +296,7 @@ impl App {
     /// Runs the game loop once.
     ///
     /// Returns `true` if the game should be stopped.
-    fn game_tick(
-        &mut self,
-        images: &mut Textures,
-        font: &'static Font,
-        components: &mut ComponentMap,
-        app_data: &mut AppData,
-        transition_manager: &mut ScreenManager,
-        delta_time: u128,
-    ) -> bool {
+    fn game_tick(&mut self, tick_data: &mut GameTickData, delta_time: u128) -> bool {
         // Logic
 
         let mut keys_up = Vec::new();
@@ -325,7 +332,7 @@ impl App {
         let keyboard_state = self.event_pump.keyboard_state();
 
         let mut logic_data = LogicData {
-            app_data,
+            app_data: tick_data.app_data,
             input_data: InputData {
                 keys_down,
                 keys_up,
@@ -342,41 +349,46 @@ impl App {
             canvas: &self.canvas,
             transition_call: TransitionCall::None,
             queued: QueuedData::new(),
+            audio: tick_data.audio,
         };
 
         let mouse_pos = logic_data.mouse_pos();
 
-        let call = if !transition_manager.is_transitioning() {
-            self.run_game_logic(components, &mut logic_data, transition_manager.screen);
+        let call = if !tick_data.transition_manager.is_transitioning() {
+            self.run_game_logic(
+                tick_data.components,
+                &mut logic_data,
+                tick_data.transition_manager.screen,
+            );
             logic_data.transition_call
         } else {
             TransitionCall::None
         };
 
-        if let Some((old_screen, new_screen)) = transition_manager.tick(call) {
-            screen::on_exit(old_screen, components);
-            screen::on_enter(new_screen, components, app_data)
+        if let Some((old_screen, new_screen)) = tick_data.transition_manager.tick(call) {
+            screen::on_exit(old_screen, tick_data.components);
+            screen::on_enter(new_screen, tick_data.components, tick_data.app_data)
         }
 
         // Rendering
 
-        let start = app_data.start;
+        let start = tick_data.app_data.start;
 
         let extracted = ExtractedData {
-            y_scroll: app_data.level_select_scroll,
-            playing_level: app_data.level.playing_level,
-            level_state: app_data.level_state.as_ref(),
+            y_scroll: tick_data.app_data.level_select_scroll,
+            playing_level: tick_data.app_data.level.playing_level,
+            level_state: tick_data.app_data.level_state.as_ref(),
             mouse_pos,
-            level_save: &app_data.level,
+            level_save: &tick_data.app_data.level,
         };
 
         if let Some(e) = Self::render(
             start,
             &mut self.canvas,
-            images,
-            font,
-            components,
-            transition_manager.transition_data(),
+            tick_data.textures,
+            tick_data.font,
+            tick_data.components,
+            tick_data.transition_manager.transition_data(),
             &extracted,
         )
         .err()

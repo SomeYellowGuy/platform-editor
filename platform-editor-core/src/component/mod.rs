@@ -15,9 +15,93 @@ pub mod level;
 pub mod level_select;
 pub mod title;
 
+#[derive(Debug, Clone)]
+/// The abstract base for a button implementing the [`Hold`] trait.
+pub struct HoldBase {
+    /// The held time for this button (in nanoseconds), which increases when held and decreases when released
+    /// by the current delta time.
+    ///
+    /// This will be from 0 to whatever the maximum hold time is.
+    hold_time: u32,
+
+    /// Whether this button is currently being held.
+    held: bool,
+}
+
+impl HoldBase {
+    pub const fn new() -> Self {
+        Self {
+            hold_time: 0,
+            held: false,
+        }
+    }
+
+    pub const fn is_held(&self) -> bool {
+        self.held
+    }
+
+    pub const fn hold_time(&self) -> u32 {
+        self.hold_time
+    }
+
+    pub const fn set_hold_time(&mut self, hold_time: u32) {
+        self.hold_time = hold_time;
+    }
+}
+
+impl Default for HoldBase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A trait for something that can be "held", like a button.
+pub trait Hold {
+    const MAX_HOLD_TIME: u32;
+
+    fn base(&self) -> &HoldBase;
+    fn base_mut(&mut self) -> &mut HoldBase;
+
+    /// Updates the hold time of this holdable. Returns whether this was
+    /// freshly held (this was held in the current frame, but not held in the
+    /// previous frame).
+    fn update_hold_time(&mut self, delta: u128, held: bool) -> bool {
+        let newly_held = !self.base().held && held;
+
+        self.base_mut().held = held;
+
+        let hold_time = self.base().hold_time;
+
+        self.base_mut().hold_time = if held {
+            (hold_time as u128 + delta).min(Self::MAX_HOLD_TIME as u128) as u32
+        } else {
+            (hold_time as u128).saturating_sub(delta) as u32
+        };
+
+        newly_held
+    }
+}
+
+#[macro_export]
+macro_rules! hold_impl {
+    ($ty:ty : $max_hold_time:literal) => {
+        impl Hold for $ty {
+            const MAX_HOLD_TIME: u32 = $max_hold_time;
+
+            fn base(&self) -> &HoldBase {
+                &self.base
+            }
+
+            fn base_mut(&mut self) -> &mut HoldBase {
+                &mut self.base
+            }
+        }
+    };
+}
+
 /// Represents the back button of a screen.
 pub struct BackButtonBase {
-    pub hold_time: u32,
+    base: HoldBase,
     pub pos: (i32, i32),
     pub mode: BackButtonMode,
 }
@@ -31,24 +115,14 @@ pub enum BackButtonMode {
 impl BackButtonBase {
     pub fn new(pos: (i32, i32), mode: BackButtonMode) -> Self {
         Self {
+            base: HoldBase::new(),
             pos,
-            hold_time: 0,
             mode,
         }
     }
 }
 
-impl Hold for BackButtonBase {
-    const MAX_HOLD_TIME: u32 = 400_000_000;
-
-    fn hold_time(&self) -> u32 {
-        self.hold_time
-    }
-
-    fn set_hold_time(&mut self, new_time: u32) {
-        self.hold_time = new_time;
-    }
-}
+hold_impl!(BackButtonBase: 400_000_000);
 
 pub const NO_LOGIC_PRIORITY: i32 = i32::MIN;
 
@@ -293,25 +367,6 @@ impl<'a, C> IntoIterator for &'a mut ComponentMap<C> {
 
     fn into_iter(self) -> Self::IntoIter {
         ComponentMapIterMut(self.components.iter_mut())
-    }
-}
-
-/// A trait for something that can be "held", like a button.
-pub trait Hold {
-    const MAX_HOLD_TIME: u32;
-
-    fn hold_time(&self) -> u32;
-    fn set_hold_time(&mut self, new_time: u32);
-
-    fn update_hold_time(&mut self, delta: u128, held: bool) {
-        let hold_time = self.hold_time();
-        if held {
-            self.set_hold_time(
-                (self.hold_time() as u128 + delta).min(Self::MAX_HOLD_TIME as u128) as u32,
-            );
-        } else {
-            self.set_hold_time((hold_time as u128).saturating_sub(delta) as u32);
-        }
     }
 }
 

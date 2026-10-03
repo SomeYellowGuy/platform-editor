@@ -12,6 +12,7 @@ use sdl3::{
 
 use crate::{
     AppData, QueuedComponent, QueuedData,
+    assets::audio::AudioPlayer,
     logic::input::{InputData, MouseEvent},
 };
 
@@ -20,6 +21,9 @@ pub mod input;
 pub struct LogicData<'app> {
     pub app_data: &'app mut AppData,
     pub input_data: InputData<'app>,
+
+    /// The audio player.
+    pub audio: &'app mut AudioPlayer,
 
     /// The current delta time, in nanoseconds.
     pub delta_time: u128,

@@ -1,6 +1,7 @@
 use std::{f64::consts::PI, time::Instant};
 
 use platform_editor_core::{
+    audio::Sound,
     common_util::{Direction, Rectf, Vec2, Vec2f},
     component::{
         ComponentId, Event, QueuedComponent,
@@ -13,8 +14,8 @@ use platform_editor_core::{
     level::{
         definition::Tile,
         state::{
-            CollectibleState, Controls, Entity, LevelState, LevelStateOutcome, Lock, ShooterBullet,
-            ShooterState,
+            CollectibleState, Controls, Entity, LevelState, LevelStateOutcome, Lock, PlaceError,
+            ShooterBullet, ShooterState,
         },
     },
     screen::Screen,
@@ -498,12 +499,16 @@ impl Logic for BoardBase {
             // Check for an item to be placed.
             if mouse_up {
                 let mouse_pos = Vec2f::new(mouse_pos.x, mouse_pos.y);
-                state.try_place_item(
+                match state.try_place_item(
                     screen_to_pos(state, mouse_pos, Vec2f::new(0.0, 0.0)).map(|f| f as i32),
-                );
+                ) {
+                    Ok(()) => data.audio.play(Sound::Place),
+                    Err(PlaceError::OutOfItems) => data.audio.play(Sound::ClickFail),
+                    Err(_) => {}
+                };
             }
 
-            state.tick(Controls::new(left, right, jump), delta)
+            state.tick(data.audio, Controls::new(left, right, jump), delta)
         };
 
         if finished {
@@ -512,6 +517,7 @@ impl Logic for BoardBase {
 
         match outcome {
             LevelStateOutcome::Win => {
+                data.audio.play(Sound::Win);
                 let state = data.app_data.level_state.as_mut().unwrap();
 
                 // Finish the level. Add an end dialog.
@@ -559,6 +565,8 @@ impl Logic for BoardBase {
                 });
             }
             LevelStateOutcome::Lose => {
+                // Play a sound.
+                data.audio.play(Sound::Lose);
                 // Reset the level by calling a transition.
                 data.reset_level_call();
             }

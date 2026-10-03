@@ -4,9 +4,11 @@ use sdl3::{
     video::WindowContext,
 };
 
-use crate::component::title::button::ExtractedFontTextureSets;
+use crate::{
+    assets::bundled::load_texture_from_static_textures,
+    component::title::button::ExtractedFontTextureSets,
+};
 
-mod bundled;
 mod dynamic;
 
 pub use dynamic::{DynamicText, TextAlignment};
@@ -26,7 +28,7 @@ fn load_texture<'c>(
     creator: &'c TextureCreator<WindowContext>,
     path: &'static str,
 ) -> Option<Texture<'c>> {
-    if let Ok(t) = bundled::load_texture_from_static_textures(creator, path) {
+    if let Ok(t) = load_texture_from_static_textures(creator, path) {
         Some(t)
     } else {
         tracing::error!("Could not find texture at {path}");

@@ -14,9 +14,9 @@ use sdl3::{
 
 use crate::{
     HEIGHT, WIDTH,
+    assets::textures::TextAlignment,
     logic::Logic,
     render::{Render, RenderData},
-    textures::TextAlignment,
     util::{FRectExt, IntoFPoint},
 };
 
@@ -161,6 +161,7 @@ impl Logic for BottomBarButtonBase {
             self.update_hold_time(data.delta_time, hovered);
 
             if data.is_mouse_button_up(MouseButton::Left) && hovered {
+                data.audio.play(self.ty.sound());
                 match self.ty {
                     BottomBarButtonType::Reset => data.reset_level_call(),
                     BottomBarButtonType::LevelSelect => data.level_select_call(),
